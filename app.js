@@ -1,0 +1,2311 @@
+/* =========================================================
+   GRÃO DE MOSTARDA PERSONALIZADOS
+   Protótipo de loja online (frontend estático)
+   ---------------------------------------------------------
+   IMPORTANTE — LEIA ISTO:
+   Este ficheiro implementa TUDO o que é possível fazer sem
+   um servidor: navegação, catálogo, carrinho, formulários,
+   cálculo de "mais vendidos" a partir de encomendas, favoritos,
+   avaliações (demo) e newsletter (demo, com validação real).
+
+   As funcionalidades que OBRIGATORIAMENTE precisam de um
+   backend (envio automático de email, base de dados de
+   encomendas/newsletter, cron job dos 60 dias, autenticação
+   de administrador) estão claramente assinaladas com o
+   comentário "REQUER BACKEND" e documentadas em ARCHITECTURE.md.
+   Onde possível, uso o link "mailto:" do navegador como
+   substituto funcional (abre o cliente de email do utilizador
+   já preenchido) até essa integração existir.
+   ========================================================= */
+
+/* ---------- Config oficial da loja ---------- */
+const SHOP = {
+  name: 'Grão de Mostarda Personalizados',
+  whatsappUrl: 'https://wa.me/351925130518?text=Ol%C3%A1!%20Gostaria%20de%20saber%20mais%20sobre%20os%20produtos.',
+  whatsappUrlPayment: (orderId) => `https://wa.me/351925130518?text=${encodeURIComponent(`Olá! Acabei de finalizar a encomenda ${orderId} no site e gostaria de combinar o pagamento. 🙏`)}`,
+  email: 'ateliergraodemostarda176@gmail.com',
+  instagramUrl: 'https://www.instagram.com/ateliergraodemostarda?igsh=cHdpNmlrcmNja2Ix',
+  instagramHandle: '@ateliergraodemostarda',
+};
+
+/* ---------- Helpers ---------- */
+const $  = (sel, ctx=document) => ctx.querySelector(sel);
+const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
+const euro = n => n.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
+const uid = (prefix) => `${prefix}-${Math.abs(hashStr(prefix+Object.keys(localStorage).length+document.title.length+performance.now())).toString(36).slice(0,4)}${(seqCounter++).toString(36)}`;
+let seqCounter = 1000;
+function hashStr(s){ s=String(s); let h=0; for(let i=0;i<s.length;i++){ h=(h<<5)-h+s.charCodeAt(i); h|=0; } return h; }
+
+/* Deterministic "random" from a seed so demo data stays stable across reloads */
+function seededRand(seed){ const x = Math.sin(seed*9301+49297)*233280; return x - Math.floor(x); }
+
+/* ---------- Branded placeholder images (no external stock photos) ---------- */
+const TONES = [
+  ['#6B4123','#402615'], // brown
+  ['#8a5a30','#6B4123'],
+  ['#B4591C','#6B4123'],
+  ['#6B4123','#2E1A0F'],
+];
+const CAT_ICON = {
+  biblias:'i-book', 'reforma-biblia':'i-scroll', canecas:'i-mug', tshirts:'i-shirt',
+  decoracao:'i-home', 'kit-pintura-infantil':'i-brush', 'porta-chaves':'i-key',
+  'cadernos-a4':'i-scroll', 'cadernos-a5':'i-scroll'
+};
+const ICON_PATHS = {
+  'i-book': 'M4 5c2-1 5-1 7 1 2-2 5-2 7-1v13c-2-1-5-1-7 1-2-2-5-2-7-1V5Z M11 6v13',
+  'i-scroll': 'M6 4h11a2 2 0 0 1 2 2v13a1 1 0 0 1-1.5.9L15 18l-2.5 2-2.5-2-2.5 2-2.5-2V6a2 2 0 0 1 2-2Z M9 8h6 M9 12h6',
+  'i-mug': 'M4 6h11v9a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V6Z M15 8h2a3 3 0 0 1 0 6h-2',
+  'i-shirt': 'M8 4 4 7l2 3 2-1v11h8V9l2 1 2-3-4-3-2 2h-4L8 4Z',
+  'i-home': 'M4 11 12 4l8 7 M6 10v9h12v-9',
+  'i-brush': 'M7 17c-2 0-3-1-3-3 3 0 4-1 4-3l9-9 3 3-9 9c0 2-1 3-4 3Z',
+  'i-key': 'M8 14a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z M10.5 11.5 18 4l2 2-2 2 1.5 1.5L18 11l-1.5-1.5-2.5 2.5',
+  'i-seed': 'M12 13c0-7 5-9 5-9s0 5-1.5 7C17 13 17 20 12 20s-5-7-3.5-9C7 9 7 4 7 4s5 2 5 9Z',
+  'i-leaf': 'M4 20C4 12 9 5 20 4c1 11-6 16-14 16H4Z M4 20c3-3 6-6 8-10',
+  'i-heart': 'M12 20.5s-8-5-8-11a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 6-8 11-8 11Z',
+  'i-flower': 'M12 3c1.8 0 3 1.4 3 3.2S13.8 9 12 9s-3-1.4-3-2.8S10.2 3 12 3Zm0 12c1.8 0 3 1.4 3 3.2S13.8 21 12 21s-3-1.4-3-2.8S10.2 15 12 15ZM3 12c0-1.8 1.4-3 3.2-3S9 10.2 9 12s-1.4 3-2.8 3S3 13.8 3 12Zm12 0c0-1.8 1.4-3 3.2-3S21 10.2 21 12s-1.4 3-2.8 3-3.2-1.2-3.2-3Z',
+};
+function placeholderSVG(label, seed=0, iconKey='i-seed'){
+  const t = TONES[Math.floor(seededRand(seed)*TONES.length)];
+  const icon = ICON_PATHS[iconKey] || 'M12 5c-3 3-5 6-5 9a5 5 0 0 0 10 0c0-3-2-6-5-9Z';
+  const rot = Math.floor(seededRand(seed+1)*360);
+  const safe = label.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640">
+    <defs>
+      <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="${t[0]}"/>
+        <stop offset="100%" stop-color="${t[1]}"/>
+      </linearGradient>
+    </defs>
+    <rect width="640" height="640" fill="url(#g)"/>
+    <circle cx="${520+seededRand(seed+2)*40}" cy="90" r="180" fill="#E8B22B" opacity="0.14"/>
+    <circle cx="60" cy="580" r="140" fill="#D9772E" opacity="0.14"/>
+    <g transform="translate(320,250) rotate(${rot/12})">
+      <g transform="translate(-30,-30) scale(2.6)" stroke="#F6D680" stroke-width="1.4" fill="none" opacity="0.9">
+        <path d="${icon}"/>
+      </g>
+    </g>
+    <text x="320" y="430" font-family="Georgia, serif" font-size="30" fill="#FBF2E4" text-anchor="middle" opacity="0.95">${safe}</text>
+    <text x="320" y="466" font-family="monospace" font-size="14" letter-spacing="2" fill="#F6D680" text-anchor="middle" opacity="0.85">IMAGEM DE DEMONSTRAÇÃO</text>
+  </svg>`;
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+}
+const PIMG = (name, seed, catSlug) => placeholderSVG(name, seed, CAT_ICON[catSlug] || 'i-book');
+
+/* =========================================================
+   DATA: CATEGORIES (exatamente as fornecidas pelo cliente)
+   ========================================================= */
+const CATEGORIES = [
+  { slug:'biblias',              name:'Bíblias',                                   icon:'i-book'  },
+  { slug:'reforma-biblia',       name:'Reforma de Bíblia',                         icon:'i-scroll'},
+  { slug:'canecas',              name:'Canecas Personalizadas',                    icon:'i-mug'   },
+  { slug:'tshirts',              name:'T-shirts Temas Cristão',                    icon:'i-shirt' },
+  { slug:'decoracao',            name:'Decoração Cristã',                          icon:'i-home'  },
+  { slug:'kit-pintura-infantil', name:'Kit Pintura Infantil',                      icon:'i-brush' },
+  { slug:'porta-chaves',         name:'Porta-Chaves',                              icon:'i-key'   },
+  { slug:'cadernos-a4',          name:'Cadernos Personalizados Devocional/Propósito A4', icon:'i-scroll' },
+  { slug:'cadernos-a5',          name:'Cadernos Personalizados A5',                icon:'i-scroll'},
+];
+const catName = slug => (CATEGORIES.find(c=>c.slug===slug)||{}).name || slug;
+
+/* =========================================================
+   DATA: PRODUCTS (demonstração — substituir por catálogo real)
+   ========================================================= */
+const PRODUCTS = [
+  { id:1, slug:'biblia-sagrada-capa-personalizada', name:'Bíblia Sagrada com Capa Personalizada', category:'biblias',
+    price:39.9, stock:6, featured:true, bestSeller:true, personalizable:true, tags:['Mais pedido'],
+    shortDesc:'Bíblia com capa gravada com nome e versículo à escolha.',
+    longDesc:'Uma Bíblia Sagrada com capa personalizada — o nome e um versículo à escolha são gravados com cuidado na capa. Uma peça pensada para acompanhar o leitor todos os dias, e para ser guardada como recordação em batizados, crismas ou aniversários.',
+    materials:'Capa em napa sintética ou couro ecológico, gravação a relevo/térmica conforme opção.',
+    dimensions:'Disponível em tamanho padrão e bolso — a confirmar na encomenda.' },
+  { id:2, slug:'biblia-jovem-ilustrada', name:'Bíblia de Estudo com Marcador Personalizado', category:'biblias',
+    price:34.5, stock:4, personalizable:true, tags:[],
+    shortDesc:'Bíblia de estudo entregue com marcador personalizado a condizer.',
+    longDesc:'Bíblia de estudo acompanhada por um marcador de livro personalizado com o nome do dono. Ideal para quem está a começar (ou a aprofundar) o hábito de leitura diária.',
+    materials:'Capa reforçada, papel bíblia fino, marcador em cartão emplastificado.',
+    dimensions:'Tamanho padrão A5.' },
+
+  { id:3, slug:'reforma-biblia-capa-couro', name:'Reforma de Bíblia — Capa em Couro Ecológico', category:'reforma-biblia',
+    price:28.0, stock:5, featured:true, personalizable:true, tags:['Serviço'],
+    shortDesc:'Damos nova vida à sua Bíblia com uma capa nova, resistente e personalizada.',
+    longDesc:'Serviço de reforma: a sua Bíblia atual — muitas vezes cheia de anotações e memórias — recebe uma capa nova em couro ecológico, com o nome ou uma frase gravada. Ideal para Bíblias antigas ou de família que já não têm capa em bom estado.',
+    materials:'Couro ecológico à escolha de cor, costura reforçada.',
+    dimensions:'Serviço adaptado ao tamanho da Bíblia enviada pelo cliente.' },
+  { id:4, slug:'reforma-biblia-restauro-completo', name:'Reforma de Bíblia — Restauro Completo', category:'reforma-biblia',
+    price:42.0, stock:3, personalizable:true, tags:['Serviço'],
+    shortDesc:'Restauro de lombada, folhas soltas e capa, com acabamento personalizado.',
+    longDesc:'Para Bíblias mais desgastadas: reforço da lombada, colagem de folhas soltas e capa nova personalizada. Um serviço pensado para quem quer continuar a usar a mesma Bíblia de sempre, agora com mais alguns anos de vida.',
+    materials:'Materiais de encadernação profissional, capa personalizável.',
+    dimensions:'Avaliado caso a caso, mediante o estado da Bíblia.' },
+
+  { id:5, slug:'caneca-graos-de-fe', name:'Caneca "Grãos de Fé"', category:'canecas',
+    price:13.9, stock:12, featured:true, bestSeller:true, personalizable:true, tags:['Mais vendido'],
+    shortDesc:'Caneca em cerâmica com "Se tiverdes fé do tamanho de um grão de mostarda" (Lc 17:6).',
+    longDesc:'Caneca em cerâmica branca, com o versículo de Lucas 17:6 — a inspiração do nome da nossa marca — gravado com uma ilustração delicada de um pequeno grão. Pode ser personalizada com um nome ou data.',
+    materials:'Cerâmica vitrificada, grau alimentar.',
+    dimensions:'Capacidade 330ml.' },
+  { id:6, slug:'caneca-casa-abencoada', name:'Caneca "Casa Abençoada"', category:'canecas',
+    price:14.5, stock:0, personalizable:true, tags:[],
+    shortDesc:'Caneca com frase "Casa Abençoada" e espaço para o nome da família.',
+    longDesc:'Uma caneca pensada para presentear uma nova casa ou uma família — com a frase "Casa Abençoada" e espaço para incluir o(s) nome(s) escolhidos.',
+    materials:'Cerâmica vitrificada, resistente a micro-ondas e máquina de lavar loiça.',
+    dimensions:'Capacidade 330ml.' },
+  { id:7, slug:'caneca-casal-devocional', name:'Caneca Dupla "Fé em Casal"', category:'canecas',
+    price:24.9, stock:7, personalizable:true, tags:['Edição especial'],
+    shortDesc:'Conjunto de duas canecas complementares, com nomes e data à escolha.',
+    longDesc:'Pensado para casais — cada caneca traz metade de um versículo, que só fica completo quando as duas ficam lado a lado na prateleira.',
+    materials:'Cerâmica vitrificada · caixa de apresentação incluída.',
+    dimensions:'2 x 300ml.' },
+
+  { id:8, slug:'tshirt-fe-inabalavel', name:'T-shirt "Fé Inabalável"', category:'tshirts',
+    price:19.9, stock:10, featured:true, bestSeller:true, personalizable:true, sizes:['XS','S','M','L','XL','XXL'], tags:['Mais vendido'],
+    shortDesc:'T-shirt em algodão com tipografia minimalista sobre um tema cristão.',
+    longDesc:'T-shirt de corte unissexo em algodão, com estampagem duradoura. O texto "Fé Inabalável" aparece em letras finas no peito — para usar todos os dias, sem exageros.',
+    materials:'100% algodão penteado, 180g/m².',
+    dimensions:'Tamanhos disponíveis: XS a XXL.' },
+  { id:9, slug:'tshirt-grao-de-mostarda', name:'T-shirt "Grão de Mostarda"', category:'tshirts',
+    price:19.9, stock:9, personalizable:true, sizes:['S','M','L','XL'], tags:['Novo'],
+    shortDesc:'T-shirt com a ilustração do grão de mostarda e a referência Lc 17.6 · Mt 17.20.',
+    longDesc:'A peça que carrega o símbolo da nossa marca — o grão de mostarda — com a dupla referência bíblica Lucas 17:6 e Mateus 17:20 impressa discretamente na manga.',
+    materials:'100% algodão, estampagem serigráfica.',
+    dimensions:'Tamanhos disponíveis: S a XL.' },
+
+  { id:10, slug:'placa-casa-abencoada-mdf', name:'Placa "Casa Abençoada" em MDF', category:'decoracao',
+    price:21.5, stock:8, featured:true, personalizable:true, tags:[],
+    shortDesc:'Placa decorativa em MDF pintada à mão, com nomes personalizáveis.',
+    longDesc:'Uma peça pensada para a sala ou corredor, com espaço para incluir os nomes de cada membro da família por baixo da frase principal. Pintura feita à mão, por isso cada peça é única.',
+    materials:'MDF pintado à mão, verniz protetor.',
+    dimensions:'40cm x 25cm.' },
+  { id:11, slug:'quadro-grao-de-mostarda', name:'Quadro "Grão de Mostarda" em Madeira', category:'decoracao',
+    price:26.9, stock:5, personalizable:false, tags:['Mais pedido'],
+    shortDesc:'Quadro em madeira gravado a laser com o versículo Lucas 17:6.',
+    longDesc:'Gravado a laser em madeira maciça, este quadro traz o versículo que dá origem ao nome da nossa marca, numa composição simples e elegante para pendurar na entrada de casa.',
+    materials:'Madeira maciça, verniz mate, sistema de suspensão incluído.',
+    dimensions:'30cm x 20cm.' },
+
+  { id:12, slug:'kit-pintura-arca-de-noe', name:'Kit Pintura Infantil "Arca de Noé"', category:'kit-pintura-infantil',
+    price:12.9, stock:14, featured:true, bestSeller:true, personalizable:false, tags:['Mais vendido'],
+    shortDesc:'Kit com peça em gesso/MDF, tintas e pincel para pintar em casa.',
+    longDesc:'Um kit pensado para os mais novos: uma peça temática da Arca de Noé pronta a pintar, acompanhada de tintas e pincel. Ótimo para tardes em família ou atividades de catequese.',
+    materials:'Peça em gesso cerâmico, tintas acrílicas atóxicas, pincel incluído.',
+    dimensions:'Peça com cerca de 12cm.' },
+  { id:13, slug:'kit-pintura-anjo-guardiao', name:'Kit Pintura Infantil "Anjo da Guarda"', category:'kit-pintura-infantil',
+    price:12.9, stock:11, personalizable:false, tags:[],
+    shortDesc:'Kit com figura de anjo pronta a pintar, tintas e pincel.',
+    longDesc:'Uma figura de anjo da guarda em gesso, pronta a pintar, acompanhada de um pequeno cartão com uma oração simples para crianças.',
+    materials:'Gesso cerâmico, tintas atóxicas, pincel incluído.',
+    dimensions:'Peça com cerca de 10cm.' },
+
+  { id:14, slug:'porta-chaves-fe-esperanca-amor', name:'Porta-Chaves "Fé, Esperança e Amor"', category:'porta-chaves',
+    price:7.9, stock:20, featured:true, personalizable:true, tags:[],
+    shortDesc:'Porta-chaves em madeira ou acrílico com frase e nome personalizável.',
+    longDesc:'Um presente pequeno mas cheio de significado — porta-chaves com a frase "Fé, Esperança e Amor" (1 Coríntios 13:13) e espaço para um nome.',
+    materials:'Madeira ou acrílico à escolha, argola resistente.',
+    dimensions:'Aprox. 5cm x 4cm.' },
+  { id:15, slug:'porta-chaves-grao-mostarda', name:'Porta-Chaves "Grão de Mostarda"', category:'porta-chaves',
+    price:7.9, stock:18, personalizable:true, tags:['Novo'],
+    shortDesc:'Porta-chaves com o símbolo do grão de mostarda gravado.',
+    longDesc:'Uma pequena lembrança diária de que a fé, mesmo pequena como um grão de mostarda, pode mover montanhas.',
+    materials:'Acrílico ou madeira, argola resistente.',
+    dimensions:'Aprox. 5cm x 4cm.' },
+
+  { id:16, slug:'caderno-devocional-a4', name:'Caderno Devocional Personalizado A4', category:'cadernos-a4',
+    price:16.9, stock:9, featured:true, bestSeller:true, personalizable:true, tags:['Mais vendido'],
+    shortDesc:'Caderno A4 com capa personalizada, para devocional e apontamentos de estudo.',
+    longDesc:'Caderno A4 com capa personalizada com nome e frase/versículo à escolha, e miolo preparado para registo devocional diário — espaço para versículo, reflexão e oração.',
+    materials:'Capa em tecido ou cartão rígido, miolo em papel 90g, elástico de fecho.',
+    dimensions:'A4 · 120 páginas.' },
+  { id:17, slug:'caderno-proposito-a4', name:'Caderno "Propósito" A4', category:'cadernos-a4',
+    price:16.9, stock:6, personalizable:true, tags:[],
+    shortDesc:'Caderno A4 personalizado para metas, orações e propósitos do ano.',
+    longDesc:'Pensado para planear metas pessoais e espirituais ao longo do ano, com secções para orações, propósitos e gratidão.',
+    materials:'Capa personalizável, miolo em papel reciclado 90g.',
+    dimensions:'A4 · 120 páginas.' },
+
+  { id:18, slug:'caderno-personalizado-a5', name:'Caderno Personalizado A5', category:'cadernos-a5',
+    price:13.9, stock:13, featured:true, personalizable:true, tags:[],
+    shortDesc:'Caderno A5 de capa personalizada, ideal para o dia a dia.',
+    longDesc:'Um caderno A5 versátil, com capa personalizada com nome, frase ou versículo à escolha — para apontamentos, listas ou diário de gratidão.',
+    materials:'Capa em tecido com espuma, miolo em papel 100g, elástico de fecho.',
+    dimensions:'A5 · 160 páginas.' },
+  { id:19, slug:'agenda-a5-caminho-de-fe', name:'Agenda A5 "Caminho de Fé" 26/27', category:'cadernos-a5',
+    price:17.5, stock:4, personalizable:true, tags:['Edição especial'],
+    shortDesc:'Agenda semanal A5 com um versículo diferente em cada mês.',
+    longDesc:'Agenda de setembro a agosto, vista semanal, com uma pequena reflexão e versículo no início de cada mês.',
+    materials:'Capa rígida personalizável, papel reciclado 90g.',
+    dimensions:'A5 · Setembro 2026 a Agosto 2027.' },
+];
+// atribui imagens de demonstração coerentes com nome/categoria de cada produto
+PRODUCTS.forEach((p,i)=>{
+  p.demo = true;
+  p.images = [ PIMG(p.name, p.id, p.category), PIMG(p.name+' — vista 2', p.id+50, p.category), PIMG(p.name+' — detalhe', p.id+90, p.category) ];
+});
+
+const relatedProducts = (product, n=4) =>
+  PRODUCTS.filter(p=>p.category===product.category && p.id!==product.id).slice(0,n);
+
+/* =========================================================
+   DATA: HISTÓRICO DE ENCOMENDAS (demonstração)
+   ---------------------------------------------------------
+   Em produção, "Mais Vendidos" seria calculado no backend a
+   partir da tabela real de encomendas concluídas. Aqui simulamos
+   um histórico de encomendas dos últimos ~95 dias para que o
+   cálculo (função computeBestSellers) seja uma função REAL,
+   e não um valor fixo escrito à mão.
+   ========================================================= */
+function buildDemoOrderHistory(){
+  const orders = [];
+  const today = new Date('2026-08-10T12:00:00'); // data de referência do protótipo
+  // pesos de popularidade por produto (só usados para GERAR a demonstração)
+  const weight = {1:5,2:2,3:3,4:1,5:9,6:2,7:4,8:8,9:5,10:3,11:6,12:10,13:4,14:6,15:3,16:9,17:3,18:5,19:2};
+  let orderNum = 1;
+  for(let d=0; d<95; d++){
+    const day = new Date(today); day.setDate(today.getDate()-d);
+    const ordersToday = Math.floor(seededRand(d*3.1)*3); // 0-2 encomendas por dia
+    for(let o=0;o<ordersToday;o++){
+      const items = [];
+      const nItems = 1+Math.floor(seededRand(d*7+o)*2);
+      for(let k=0;k<nItems;k++){
+        const roll = seededRand(d*13+o*5+k)*Object.values(weight).reduce((a,b)=>a+b,0);
+        let acc=0, chosen=PRODUCTS[0].id;
+        for(const pid in weight){ acc+=weight[pid]; if(roll<=acc){ chosen=Number(pid); break; } }
+        const qty = 1+Math.floor(seededRand(d*17+o*3+k)*2);
+        items.push({ productId: chosen, qty });
+      }
+      orders.push({ id:`GM-${String(1000+orderNum).slice(-4)}`, date: day.toISOString().slice(0,10), status:'concluída', items });
+      orderNum++;
+    }
+  }
+  return orders;
+}
+const ORDERS_DEMO = buildDemoOrderHistory();
+
+/**
+ * Calcula os produtos mais vendidos a partir de um histórico real de
+ * encomendas — ORDERS_DEMO (histórico simulado) MAIS quaisquer
+ * encomendas reais criadas nesta sessão (guardadas em localStorage,
+ * chave "gm_orders_demo"). Só contam encomendas com status
+ * "concluída" — uma encomenda "pendente de pagamento" ainda NÃO é
+ * uma venda. Em produção, esta função ficaria praticamente igual —
+ * só passaria a ler as encomendas da base de dados em vez destas
+ * duas fontes locais.
+ */
+function getAllOrders(){
+  const local = JSON.parse(localStorage.getItem('gm_orders_demo')||'[]');
+  return [...ORDERS_DEMO, ...local];
+}
+function computeBestSellers(periodDays, limit=8){
+  const today = new Date('2026-08-10T12:00:00');
+  const cutoff = periodDays ? new Date(today.getTime() - periodDays*86400000) : null;
+  const totals = {};
+  getAllOrders().forEach(order=>{
+    if(order.status!=='concluída') return;
+    if(cutoff && new Date(order.date) < cutoff) return;
+    order.items.forEach(it=>{ totals[it.productId] = (totals[it.productId]||0) + it.qty; });
+  });
+  return Object.entries(totals)
+    .sort((a,b)=>b[1]-a[1])
+    .slice(0,limit)
+    .map(([pid,qty])=>({ product: PRODUCTS.find(p=>p.id===Number(pid)), unitsSold: qty }))
+    .filter(x=>x.product);
+}
+let bestSellerPeriod = 30; // 30 | 90 | null(total)
+
+/**
+ * Calcula os produtos "Melhores Avaliados" com uma média ponderada
+ * (fórmula do tipo IMDB/Bayesian average), para que um produto com
+ * poucas avaliações de 5 estrelas não ultrapasse automaticamente um
+ * produto com muitas avaliações de 4.8. Considera: média do produto,
+ * número de avaliações, e usa a média global como "prior".
+ *   score = (v / (v+m)) * R  +  (m / (v+m)) * C
+ *   v = nº de avaliações do produto · R = média do produto
+ *   m = nº mínimo de avaliações para ganhar confiança total (aqui 5)
+ *   C = média global de todas as avaliações (prior/base de referência)
+ */
+function computeTopRatedProducts(limit=6, minReviewsShown=1){
+  const all = REVIEWS_DEMO;
+  if(!all.length) return [];
+  const C = all.reduce((s,r)=>s+r.rating,0) / all.length;
+  const m = 5; // quanto maior, mais avaliações são precisas para um produto "ganhar confiança"
+  const byProduct = {};
+  all.forEach(r=>{
+    if(!r.productId) return;
+    (byProduct[r.productId] = byProduct[r.productId] || []).push(r);
+  });
+  return Object.entries(byProduct)
+    .map(([pid, reviews])=>{
+      const v = reviews.length;
+      const R = reviews.reduce((s,r)=>s+r.rating,0) / v;
+      const verifiedCount = reviews.filter(r=>r.verified).length;
+      const score = (v/(v+m))*R + (m/(v+m))*C;
+      return { product: PRODUCTS.find(p=>p.id===Number(pid)), reviewCount:v, avgRating:R, verifiedCount, score };
+    })
+    .filter(x=>x.product && x.reviewCount>=minReviewsShown)
+    .sort((a,b)=>b.score-a.score)
+    .slice(0,limit);
+}
+
+/* =========================================================
+   DATA: REFLEXÕES / INSPIRAÇÃO
+   (tema central: a parábola do grão de mostarda — Lc 17:6, Mt 17:20 —
+   e temas de fé ligados diretamente ao artesanato da marca)
+   ========================================================= */
+const REFLECTIONS = [
+  { id:1, title:'A Parábola do Grão de Mostarda', verse:'Lucas 17:6 · Mateus 17:20', icon:'i-seed', featured:true,
+    short:'A história que dá nome à nossa marca — uma fé pequena, mas capaz de mover montanhas.',
+    long:'"Se tiverdes fé do tamanho de um grão de mostarda, direis a esta amoreira: desarraiga-te e planta-te no mar; e ela vos obedecerá." O grão de mostarda é uma das menores sementes — mas cresce até se tornar uma árvore onde as aves fazem ninho. É este o espírito com que trabalhamos cada peça: começar pequeno, com cuidado, e confiar no propósito por trás de cada detalhe.' },
+  { id:2, title:'Noé e a Arca', verse:'Génesis 6:14', icon:'i-boat',
+    short:'Uma promessa cumprida através de décadas de trabalho paciente, tábua a tábua.',
+    long:'Perante um mundo em desordem, Noé recebe instruções precisas para construir uma arca — e obedece, mesmo sem ver ainda a razão. Uma história sobre paciência artesanal: anos de trabalho manual guiados pela fé de que valia a pena continuar, até ao dia em que a chuva finalmente chegou.' },
+  { id:3, title:'Davi e Golias', verse:'1 Samuel 17:45', icon:'i-shield',
+    short:'Um jovem pastor, uma funda simples, e a coragem de enfrentar um gigante.',
+    long:'Enquanto todo o exército hesita, um jovem pastor chamado Davi avança apenas com uma funda e cinco pedras lisas do rio. Uma metáfora usada há séculos para enfrentar aquilo que parece maior do que nós — com fé, não com tamanho.' },
+  { id:4, title:'Daniel na Cova dos Leões', verse:'Daniel 6:22', icon:'i-lion',
+    short:'Uma noite inteira rodeado de leões, e uma fé que não vacilou.',
+    long:'Por se recusar a deixar de orar, Daniel é lançado a uma cova de leões famintos. Ao amanhecer, é encontrado ileso — uma história sobre integridade mantida mesmo quando o preço parece ser demasiado alto.' },
+  { id:5, title:'Moisés e o Mar Vermelho', verse:'Êxodo 14:21-22', icon:'i-scroll',
+    short:'Um caminho aberto no meio da água, no momento em que parecia não haver saída.',
+    long:'Encurralado entre o exército egípcio e o mar, o povo de Israel vê as águas abrirem-se para deixar passagem em terra seca. Talvez a imagem mais icónica de libertação em toda a narrativa bíblica — o momento em que o impossível se torna caminho.' },
+  { id:6, title:'Jesus e os Discípulos', verse:'Mateus 4:19', icon:'i-fish',
+    short:'Um convite feito a pescadores comuns, à beira de um lago.',
+    long:'"Sigam-me, e eu farei de vocês pescadores de homens" — com esta frase simples, Jesus chama os primeiros discípulos, homens comuns que largam as redes para seguir algo maior. Um lembrete de que grandes histórias começam, quase sempre, com pessoas do dia a dia.' },
+  { id:7, title:'O Bom Pastor', verse:'João 10:11', icon:'i-staff',
+    short:'Aquele que conhece cada ovelha pelo nome, e cuida de cada uma com atenção.',
+    long:'"Eu sou o bom Pastor; o bom Pastor dá a sua vida pelas ovelhas." Uma imagem de cuidado individual, atento a cada detalhe — muito próxima da forma como gostamos de tratar cada encomenda: uma de cada vez, com atenção ao que a torna única.' },
+  { id:8, title:'O Filho Pródigo', verse:'Lucas 15:20', icon:'i-heart',
+    short:'Um regresso a casa recebido de braços abertos, sem uma palavra de reproche.',
+    long:'"Quando ainda estava longe, viu-o seu pai, e foi movido de íntima compaixão, e correu, e lançou-se-lhe ao pescoço, e o beijou." Uma das imagens mais fortes de amor incondicional em toda a Bíblia — e uma inspiração recorrente nas nossas peças para "casa" e família.' },
+];
+
+/* =========================================================
+   DATA: INSPIRAÇÃO → PRODUTO
+   (ligação entre um tema/frase de inspiração e uma categoria real da loja)
+   ========================================================= */
+const INSPIRATION_LINKS = [
+  { phrase:'Fé que acompanha o dia a dia', cat:'canecas', seed:71 },
+  { phrase:'Palavras que permanecem', cat:'cadernos-a5', seed:72 },
+  { phrase:'Vista aquilo em que acredita', cat:'tshirts', seed:73 },
+  { phrase:'Detalhes que transformam espaços', cat:'decoracao', seed:74 },
+];
+
+/* =========================================================
+   DATA: GALERIA DE INSPIRAÇÃO
+   (imagens geradas localmente — ver ARCHITECTURE.md — nunca fotografia real
+   apresentada como se fosse de outro produto)
+   ========================================================= */
+const INSPIRATION_GALLERY = [
+  { label:'Fé em cada detalhe', icon:'i-seed', seed:81 },
+  { label:'Palavra viva', icon:'i-book', seed:82 },
+  { label:'Feito à mão, com tempo', icon:'i-brush', seed:83 },
+  { label:'Luz sobre o que importa', icon:'i-flower', seed:84 },
+  { label:'Levar a Bíblia consigo', icon:'i-scroll', seed:85 },
+  { label:'Casa, família e fé', icon:'i-heart', seed:86 },
+  { label:'Crescer devagar', icon:'i-leaf', seed:87 },
+  { label:'Um propósito por peça', icon:'i-mug', seed:88 },
+];
+
+/* =========================================================
+   DATA: AVALIAÇÕES (DEMONSTRAÇÃO — substituir por avaliações reais e moderadas)
+   ========================================================= */
+const REVIEWS_DEMO = [
+  { id:1, productId:5, name:'Cliente exemplo — C.M.', rating:5, product:'Caneca "Grãos de Fé"', date:'2026-07-28', verified:true, demo:true,
+    text:'Encomendei para o aniversário da minha mãe e a personalização ficou linda. Entrega dentro do prazo combinado.' },
+  { id:2, productId:16, name:'Cliente exemplo — R.P.', rating:5, product:'Caderno Devocional Personalizado A4', date:'2026-07-15', verified:true, demo:true,
+    text:'O caderno tornou-se o meu companheiro de todas as manhãs. Muito bem feito e com um significado especial.' },
+  { id:3, productId:10, name:'Cliente exemplo — I.C.', rating:4, product:'Placa "Casa Abençoada" em MDF', date:'2026-06-30', verified:true, demo:true,
+    text:'Muito bonita, só demorou um pouco mais do que esperava — mas o resultado valeu a pena.' },
+  { id:4, productId:8, name:'Cliente exemplo — T.M.', rating:5, product:'T-shirt "Fé Inabalável"', date:'2026-06-12', verified:false, demo:true,
+    text:'Tornou-se a minha t-shirt preferida para o dia a dia. Simples, confortável, com um significado que gosto de levar comigo.' },
+  { id:5, productId:12, name:'Cliente exemplo — S.A.', rating:5, product:'Kit Pintura Infantil "Arca de Noé"', date:'2026-05-22', verified:true, demo:true,
+    text:'Os meus filhos adoraram pintar juntos numa tarde de domingo. Vamos repetir com outros kits.' },
+  { id:6, productId:3, name:'Cliente exemplo — J.F.', rating:4, product:'Reforma de Bíblia — Capa em Couro Ecológico', date:'2026-05-02', verified:true, demo:true,
+    text:'A Bíblia da minha avó ganhou uma segunda vida. Trabalho com muito cuidado.' },
+  { id:7, productId:5, name:'Cliente exemplo — P.N.', rating:5, product:'Caneca "Grãos de Fé"', date:'2026-07-02', verified:true, demo:true,
+    text:'Já é a segunda vez que encomendo. Qualidade consistente e chega sempre bem embalada.' },
+  { id:8, productId:5, name:'Cliente exemplo — A.V.', rating:4, product:'Caneca "Grãos de Fé"', date:'2026-06-18', verified:true, demo:true,
+    text:'Muito bonita, só achei o texto um pouco pequeno. Ainda assim recomendo.' },
+  { id:9, productId:15, name:'Cliente exemplo — D.O.', rating:5, product:'Porta-Chaves "Grão de Mostarda"', date:'2026-07-30', verified:false, demo:true,
+    text:'Adorei o pormenor do grão gravado. Prenda simples mas muito querida.' },
+];
+// Nota sobre a lógica de "Melhores Avaliados": um produto como o Porta-Chaves acima
+// (1 avaliação, 5.0) NÃO ultrapassa a Caneca "Grãos de Fé" (3 avaliações, média 4.67)
+// na função computeTopRatedProducts() — ver a média ponderada mais abaixo neste ficheiro.
+
+/* =========================================================
+   DATA: FAQ (facilmente extensível)
+   ========================================================= */
+const FAQ_DATA = [
+  { q:'Como faço uma encomenda?', a:'Basta escolher os produtos na Loja, adicionar ao carrinho e finalizar a compra preenchendo o formulário com os seus dados. Depois de enviado o pedido, entramos em contacto para combinar o pagamento.' },
+  { q:'Posso personalizar um produto?', a:'Sim — a maioria dos nossos produtos pode ser personalizada com nome, data ou um versículo à escolha, diretamente no formulário da página do produto.' },
+  { q:'Quanto tempo demora uma encomenda personalizada?', a:'O tempo de produção varia entre 3 a 7 dias úteis consoante o produto, mais o tempo de envio. Para datas especiais, contacte-nos com antecedência.' },
+  { q:'Como funciona o envio?', a:'Enviamos para todo o território nacional. Os detalhes de portes e prazos são confirmados após o envio da encomenda, com base na morada indicada.' },
+  { q:'Posso trocar um produto?', a:'Sim, aceitamos trocas em produtos não personalizados dentro de 14 dias. Produtos personalizados são avaliados caso a caso — contacte-nos.' },
+  { q:'Posso pedir alteração de design?', a:'Sim! Use a página de Encomendas Especiais para nos contar exatamente o que imagina — cores, frases, dimensões e referências.' },
+  { q:'Como acompanho a minha encomenda?', a:'Depois de finalizar a encomenda, receberá um número de identificação. O acompanhamento do estado é feito diretamente via WhatsApp.' },
+  { q:'Os produtos de impressão podem ter cores diferentes?', a:'Sim, sempre que aplicável indicamos as opções de cor disponíveis na página do produto ou por mensagem.' },
+  { q:'Como contacto a loja?', a:`Pode contactar-nos por WhatsApp, por email (${SHOP.email}) ou através do formulário de Contacto.` },
+];
+
+/* =========================================================
+   STATE
+   ========================================================= */
+const state = {
+  cart: [],
+  favorites: new Set(),
+  lastOrder: null,
+};
+
+/* =========================================================
+   TOAST
+   ========================================================= */
+let toastTimer;
+function showToast(msg){
+  const t = $('#toast');
+  $('#toastMsg').textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 3200);
+}
+
+/* =========================================================
+   CART LOGIC
+   ========================================================= */
+function stockOf(id){ const p = PRODUCTS.find(p=>p.id===id); return p ? p.stock : 0; }
+function addToCart(id, qty=1){
+  const p = PRODUCTS.find(p=>p.id===id);
+  if(!p) return;
+  if(p.stock<=0){ showToast('Este produto está esgotado no momento.'); return; }
+  const existing = state.cart.find(c=>c.id===id);
+  const currentQty = existing ? existing.qty : 0;
+  const allowedQty = Math.min(qty, Math.max(0, p.stock-currentQty));
+  if(allowedQty<=0){ showToast(`Só há ${p.stock} unidade(s) em stock — já tem o máximo no carrinho.`); return; }
+  if(existing){ existing.qty += allowedQty; } else { state.cart.push({id, qty:allowedQty}); }
+  renderCart();
+  updateBadges();
+  showToast(`${p.name} adicionado ao carrinho`);
+  openCart();
+}
+function removeFromCart(id){
+  state.cart = state.cart.filter(c=>c.id!==id);
+  renderCart(); updateBadges();
+}
+function setQty(id, qty){
+  const item = state.cart.find(c=>c.id===id);
+  if(!item) return;
+  const max = stockOf(id);
+  item.qty = Math.max(1, Math.min(qty, max));
+  renderCart(); updateBadges();
+}
+function cartTotal(){
+  return state.cart.reduce((sum,c)=>{
+    const p = PRODUCTS.find(p=>p.id===c.id);
+    return sum + (p ? p.price*c.qty : 0);
+  },0);
+}
+function cartCount(){ return state.cart.reduce((n,c)=>n+c.qty,0); }
+
+function renderCart(){
+  const wrap = $('#cartItems');
+  const foot = $('#cartFoot');
+  if(!wrap) return;
+  if(state.cart.length===0){
+    wrap.innerHTML = `<div class="cart-empty">
+      <svg style="width:34px;height:34px;color:var(--line);margin-bottom:14px"><use href="#i-bag"/></svg>
+      <p>O seu carrinho está vazio.</p>
+    </div>`;
+    foot.innerHTML = `<a href="#/loja" data-route="/loja" class="btn btn-primary btn-block" onclick="closeCart()">Ver a loja</a>`;
+    return;
+  }
+  wrap.innerHTML = state.cart.map(c=>{
+    const p = PRODUCTS.find(p=>p.id===c.id);
+    const atMax = c.qty>=p.stock;
+    return `<div class="cart-item">
+      <img src="${p.images[0]}" alt="${p.name}">
+      <div class="cart-item-info">
+        <h4>${p.name}</h4>
+        <div class="muted">${euro(p.price)} / un.</div>
+        <div class="qty-stepper">
+          <button onclick="setQty(${p.id}, ${c.qty-1})" aria-label="Diminuir quantidade">–</button>
+          <span>${c.qty}</span>
+          <button onclick="setQty(${p.id}, ${c.qty+1})" aria-label="Aumentar quantidade" ${atMax?'disabled':''}>+</button>
+        </div>
+        ${atMax?`<div class="stock-warn">Máximo em stock (${p.stock})</div>`:''}
+        <button class="cart-item-remove" onclick="removeFromCart(${p.id})">Remover</button>
+      </div>
+    </div>`;
+  }).join('');
+  foot.innerHTML = `
+    <div class="cart-summary"><span style="font-family:var(--sans);font-size:14px;color:var(--ink-soft)">Subtotal</span><span>${euro(cartTotal())}</span></div>
+    <button class="btn btn-primary btn-block" onclick="goCheckout()">Finalizar encomenda</button>
+    <p style="font-size:11.5px;color:var(--ink-soft);text-align:center;margin-top:10px">Pagamento combinado por WhatsApp após a encomenda</p>
+  `;
+}
+function goCheckout(){
+  closeCart();
+  location.hash = '#/checkout';
+}
+function updateBadges(){
+  const cb = $('#cartBadge');
+  const n = cartCount();
+  cb.style.display = n>0 ? 'flex' : 'none';
+  cb.textContent = n;
+  const fb = $('#favBadge');
+  fb.style.display = state.favorites.size>0 ? 'flex' : 'none';
+  fb.textContent = state.favorites.size;
+}
+function toggleFavorite(id){
+  if(state.favorites.has(id)) state.favorites.delete(id); else state.favorites.add(id);
+  updateBadges();
+  $$(`.fav-btn[data-id="${id}"]`).forEach(btn=>btn.classList.toggle('is-fav', state.favorites.has(id)));
+}
+
+/* =========================================================
+   DRAWERS
+   ========================================================= */
+function openCart(){ $('#cartDrawer').classList.add('open'); $('#drawerOverlay').classList.add('open'); }
+function closeCart(){ $('#cartDrawer').classList.remove('open'); syncOverlay(); }
+function openMobileNav(){ $('#mobileDrawer').classList.add('open'); $('#drawerOverlay').classList.add('open'); }
+function closeMobileNav(){ $('#mobileDrawer').classList.remove('open'); syncOverlay(); }
+function syncOverlay(){
+  const anyOpen = $('#cartDrawer').classList.contains('open') || $('#mobileDrawer').classList.contains('open');
+  $('#drawerOverlay').classList.toggle('open', anyOpen);
+}
+
+/* =========================================================
+   COMPONENTS
+   ========================================================= */
+function stockTag(p){
+  if(p.stock<=0) return `<span class="stock-tag out">Esgotado</span>`;
+  if(p.stock<=3) return `<span class="stock-tag">Últimas ${p.stock} un.</span>`;
+  return '';
+}
+function productCard(p, i=0){
+  const isFav = state.favorites.has(p.id);
+  return `
+  <div class="product-card reveal reveal-${(i%4)+1}">
+    <div class="product-media">
+      <div class="media-badges">
+        ${p.tags && p.tags[0] ? `<span class="tag tag-orange">${p.tags[0]}</span>` : ''}
+        ${stockTag(p)}
+      </div>
+      <div class="product-icon-actions">
+        <button class="fav-btn ${isFav?'is-fav':''}" data-id="${p.id}" onclick="toggleFavorite(${p.id})" aria-label="Adicionar aos favoritos">
+          <svg><use href="#i-heart"/></svg>
+        </button>
+        <button class="cart-icon-btn" onclick="addToCart(${p.id})" aria-label="${p.stock<=0?'Produto esgotado':'Adicionar ao carrinho'}" ${p.stock<=0?'disabled':''}>
+          <svg><use href="#i-bag"/></svg>
+        </button>
+      </div>
+      <img src="${p.images[0]}" alt="${p.name}" onclick="location.hash='#/produto/${p.slug}'">
+    </div>
+    <div class="product-body">
+      <span class="cat-label">${catName(p.category)}${p.personalizable?' · Personalizável':''}</span>
+      <h3><a href="#/produto/${p.slug}" data-route="/produto/${p.slug}">${p.name}</a></h3>
+      <p class="desc">${p.shortDesc}</p>
+      <div class="product-foot">
+        <span class="price">${euro(p.price)}</span>
+        <a href="#/produto/${p.slug}" data-route="/produto/${p.slug}" class="mini-link">Ver produto</a>
+      </div>
+    </div>
+  </div>`;
+}
+
+function reflectionCard(s, i){
+  return `
+  <div class="bible-card reveal reveal-${(i%4)+1}">
+    <div class="bc-media">
+      <span class="bc-num">${String(i+1).padStart(2,'0')}</span>
+      <svg><use href="#${s.icon}"/></svg>
+    </div>
+    <div class="bc-body">
+      <h4>${s.title}</h4>
+      <p>${s.short}</p>
+      <span class="tag verse-tag">${s.verse}</span>
+      <button class="bc-more" onclick="openStoryModal(${s.id})">Saber mais →</button>
+    </div>
+  </div>`;
+}
+
+function starsHTML(rating){ return `<div class="stars">${'<svg><use href="#i-star"/></svg>'.repeat(Math.round(rating))}</div>`; }
+function initials(name){ return name.replace('Cliente exemplo — ','').trim().split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
+function reviewCard(t){
+  return `
+  <div class="testi-card reveal">
+    <svg class="quote-icon"><use href="#i-quote"/></svg>
+    ${starsHTML(t.rating)}
+    <p>"${t.text}"</p>
+    <div class="testi-who">
+      <div class="testi-who-l">
+        <span class="testi-avatar">${initials(t.name)}</span>
+        <div><strong>${t.name}</strong><span>${t.product}</span></div>
+      </div>
+    </div>
+    ${t.verified?`<div class="verified-badge" style="margin-top:10px"><svg><use href="#i-check"/></svg>Compra verificada</div>`:''}
+  </div>`;
+}
+
+/* =========================================================
+   REFLECTION MODAL
+   ========================================================= */
+function openStoryModal(id){
+  const s = REFLECTIONS.find(s=>s.id===id);
+  if(!s) return;
+  $('#modalNum').textContent = `Reflexão ${String(s.id).padStart(2,'0')}`;
+  $('#modalTitle').textContent = s.title;
+  $('#modalText').textContent = s.long;
+  $('#modalVerse').textContent = s.verse;
+  $('#storyModal .modal-media').innerHTML = `<svg><use href="#${s.icon}"/></svg>`;
+  $('#storyModal').classList.add('open');
+}
+function closeStoryModal(){ $('#storyModal').classList.remove('open'); }
+
+/* =========================================================
+   NEWSLETTER (demonstração funcional — ver ARCHITECTURE.md)
+   ---------------------------------------------------------
+   Faz validação real de email, impede duplicados e guarda o
+   pedido localmente para fins de demonstração. Em produção,
+   isto chamaria uma API de backend ligada a um serviço como
+   Resend / Brevo / Mailchimp / SendGrid (nunca com chaves no
+   frontend).
+   ========================================================= */
+function getNewsletterList(){ try{ return JSON.parse(localStorage.getItem('gm_newsletter_demo')||'[]'); }catch(e){ return []; } }
+function saveNewsletterList(list){ localStorage.setItem('gm_newsletter_demo', JSON.stringify(list)); }
+function isValidEmail(email){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
+
+function subscribeNewsletter(email, consent=true){
+  email = (email||'').trim().toLowerCase();
+  if(!isValidEmail(email)){ showToast('Introduza um email válido.'); return false; }
+  if(!consent){ showToast('É necessário aceitar receber comunicações para subscrever.'); return false; }
+  const list = getNewsletterList();
+  if(list.find(s=>s.email===email)){ showToast('Este email já está subscrito — obrigado!'); return true; }
+  list.push({ email, consent:true, subscribedAt: new Date().toISOString(), lastVisit: new Date().toISOString(), lastReengagementEmailSent:null, unsubscribed:false });
+  saveNewsletterList(list);
+  showToast('Subscrição confirmada. Bem-vindo(a) à Grão de Mostarda!');
+  return true;
+}
+function handleNewsletter(e){
+  e.preventDefault();
+  const input = e.target.querySelector('input[type=email]');
+  const consentBox = e.target.querySelector('input[type=checkbox]');
+  const ok = subscribeNewsletter(input.value, consentBox ? consentBox.checked : true);
+  if(ok) e.target.reset();
+}
+function unsubscribeNewsletter(email){
+  email = (email||'').trim().toLowerCase();
+  const list = getNewsletterList();
+  const entry = list.find(s=>s.email===email);
+  if(!entry){ showToast('Não encontrámos esse email na nossa lista.'); return false; }
+  entry.unsubscribed = true;
+  saveNewsletterList(list);
+  showToast('Subscrição cancelada. Não vai voltar a receber emails nossos.');
+  return true;
+}
+function pageNewsletterCancelar(){
+  return `
+  <div class="page-header">
+    <span class="eyebrow">Fica a par</span>
+    <h1>Cancelar subscrição</h1>
+    <p>Lamentamos vê-lo(a) partir. Indique o email que quer remover da nossa lista.</p>
+  </div>
+  <section class="section" style="padding-top:0">
+    <div class="wrap" style="max-width:480px;margin:0 auto">
+      <form class="form-panel" id="unsubscribeForm" style="text-align:left">
+        <label>Email</label>
+        <input type="email" name="email" required placeholder="O seu email">
+        <button type="submit" class="btn btn-brown btn-block" style="margin-top:22px">Cancelar subscrição</button>
+      </form>
+    </div>
+  </section>
+  `;
+}
+function wireUnsubscribePage(){
+  const form = $('#unsubscribeForm');
+  if(!form) return;
+  form.addEventListener('submit', e=>{
+    e.preventDefault();
+    const email = new FormData(form).get('email');
+    if(unsubscribeNewsletter(email)) form.reset();
+  });
+}
+
+/* =========================================================
+   ENCOMENDAS — checkout & encomendas especiais
+   ---------------------------------------------------------
+   Sem backend disponível neste protótipo, geramos um número de
+   encomenda, guardamos localmente (demonstração) e usamos um
+   link "mailto:" para abrir o cliente de email do utilizador
+   já preenchido para ateliergraodemostarda176@gmail.com — uma
+   forma funcional (sem servidor) de o pedido chegar à loja
+   enquanto a automação de email de backend não está ligada.
+   ========================================================= */
+function nextOrderId(){
+  const n = 1000 + ORDERS_DEMO.length + (JSON.parse(localStorage.getItem('gm_orders_demo')||'[]').length) + 1;
+  return `GM-${n}`;
+}
+function saveOrderDemo(order){
+  const list = JSON.parse(localStorage.getItem('gm_orders_demo')||'[]');
+  list.push(order);
+  localStorage.setItem('gm_orders_demo', JSON.stringify(list));
+}
+function buildOrderEmailBody(order){
+  const lines = order.items.map(it=>`- ${it.qty}x ${it.name} (${euro(it.price)} cada) = ${euro(it.qty*it.price)}${it.personalization?` — Personalização: "${it.personalization}"`:''}`);
+  return [
+    `Nova encomenda — ${SHOP.name}`,
+    ``,
+    `Número: ${order.id}`,
+    `Data: ${order.date}`,
+    ``,
+    `Cliente: ${order.customer.name}`,
+    `Telefone: ${order.customer.phone}`,
+    `Email: ${order.customer.email}`,
+    `Morada: ${order.customer.address}, ${order.customer.postal} ${order.customer.city}`,
+    ``,
+    `Produtos:`,
+    ...lines,
+    ``,
+    `Total: ${euro(order.total)}`,
+    ``,
+    `Observações: ${order.customer.notes || '—'}`,
+    ``,
+    `(Pagamento a combinar via WhatsApp)`
+  ].join('\n');
+}
+function submitOrder(customer){
+  const items = state.cart.map(c=>{
+    const p = PRODUCTS.find(p=>p.id===c.id);
+    return { productId:p.id, name:p.name, qty:c.qty, price:p.price, personalization: customer.personalizations?.[p.id] || '' };
+  });
+  const order = {
+    id: nextOrderId(),
+    date: new Date().toISOString().slice(0,10),
+    status: 'pendente de pagamento',
+    customer,
+    items,
+    total: cartTotal(),
+  };
+  saveOrderDemo(order);
+  state.lastOrder = order;
+
+  // REQUER BACKEND: em produção, este passo chamaria uma API que:
+  // 1) grava a encomenda na base de dados, 2) envia o email automático
+  // ao responsável da loja, 3) envia email de confirmação ao cliente.
+  // Como alternativa funcional sem servidor, abrimos um rascunho de
+  // email já preenchido para o email oficial da loja:
+  const subject = encodeURIComponent(`Nova encomenda — ${order.id} — ${SHOP.name}`);
+  const body = encodeURIComponent(buildOrderEmailBody(order));
+  const mailtoUrl = `mailto:${SHOP.email}?subject=${subject}&body=${body}`;
+
+  state.cart = [];
+  renderCart(); updateBadges();
+  return { order, mailtoUrl };
+}
+
+function submitSpecialOrder(data){
+  const id = `ENC-${1000 + Math.floor(seededRand(hashStr(data.email+data.name))*8999)}`;
+  const record = { id, date:new Date().toISOString().slice(0,10), ...data };
+  const list = JSON.parse(localStorage.getItem('gm_special_orders_demo')||'[]');
+  list.push(record);
+  localStorage.setItem('gm_special_orders_demo', JSON.stringify(list));
+  const subject = encodeURIComponent(`Encomenda especial — ${id} — ${SHOP.name}`);
+  const body = encodeURIComponent(
+    `Novo pedido de encomenda especial — ${SHOP.name}\n\n`+
+    `Número: ${id}\nData: ${record.date}\n\n`+
+    `Nome: ${data.name}\nEmail: ${data.email}\nTelefone: ${data.phone}\n\n`+
+    `Tipo de produto: ${data.type}\nQuantidade: ${data.qty}\n`+
+    `Frase/versículo: ${data.verse || '—'}\nCores: ${data.colors || '—'}\nDimensões: ${data.dimensions || '—'}\n`+
+    `Data pretendida: ${data.deadline || '—'}\n\nDescrição: ${data.description}\n\nObservações: ${data.notes || '—'}`
+  );
+  const mailtoUrl = `mailto:${SHOP.email}?subject=${subject}&body=${body}`;
+  return { id, mailtoUrl };
+}
+
+/* =========================================================
+   PAGE: HOME
+   ========================================================= */
+function pageHome(){
+  const featured = PRODUCTS.filter(p=>p.featured).slice(0,4);
+  const bestSellers = computeBestSellers(30, 6);
+  const reflectionPreview = REFLECTIONS.slice(0,4);
+  const reviews = REVIEWS_DEMO.slice(0,4);
+  return `
+  <section class="hero">
+    <div class="hero-glow"></div><div class="hero-glow-2"></div>
+    ${decor('twig','dec-side-l dec-lg tone-cream',101)}
+    ${decor('fern','dec-side-r2 dec-md tone-cream secondary',102)}
+    ${decor('daisy','dec-tr dec-sm tone-rose secondary',105)}
+    ${decor('leaf','dec-bl dec-sm tone-cream secondary',106)}
+    ${decor('seeds','dec-quarter-l dec-sm tone-cream secondary faint',104)}
+    ${decor('seeds','dec-bot-r dec-sm tone-cream secondary faint',107)}
+    <div class="hero-content">
+      <img class="hero-logo reveal" src="assets/logo.webp" alt="Grão de Mostarda Personalizados">
+      <span class="eyebrow reveal reveal-1">Artesanato · Personalização · Fé</span>
+      <h1 class="reveal reveal-1">Produtos feitos com<br><span class="script-line">amor, fé e propósito</span></h1>
+      <p class="hero-verse-line reveal reveal-2">"Se tiverdes fé do tamanho de um grão de mostarda..."<span>Lucas 17:6 · Mateus 17:20</span></p>
+      <div class="hero-actions reveal reveal-3">
+        <a href="#/loja" data-route="/loja" class="btn btn-primary">Ver a Loja</a>
+        <a href="#/encomendas-especiais" data-route="/encomendas-especiais" class="btn btn-ghost">Pedir Encomenda Especial</a>
+      </div>
+    </div>
+  </section>
+
+  <div class="trust-strip">
+    <div class="wrap">
+      <div class="trust-item"><svg><use href="#i-leaf"/></svg> Feito à mão, peça a peça</div>
+      <div class="trust-item"><svg><use href="#i-gift"/></svg> Personalização incluída</div>
+      <div class="trust-item"><svg><use href="#i-wa"/></svg> Pagamento combinado por WhatsApp</div>
+      <div class="trust-item"><svg><use href="#i-shield"/></svg> Produção em pequena escala</div>
+    </div>
+  </div>
+
+  <section class="section">
+    ${decor('twig','dec-tr dec-lg tone-gold secondary',11)}
+    ${decor('seeds','dec-near-title dec-xs tone-orange secondary faint',110)}
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="eyebrow">Categorias</span>
+        <h2>Para cada canto da casa e do dia a dia</h2>
+      </div>
+      <div class="cat-grid">
+        ${CATEGORIES.map((c,i)=>`
+          <a href="#/loja?cat=${c.slug}" data-route="/loja" class="cat-card reveal reveal-${(i%4)+1}">
+            <svg class="cc-icon"><use href="#${c.icon}"/></svg>
+            <span>${c.name}</span>
+          </a>`).join('')}
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:0">
+    ${decor('leaf','dec-tl dec-md tone-brown secondary',111)}
+    ${decor('daisy','dec-br dec-sm tone-gold secondary',112)}
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="eyebrow">Em destaque</span>
+        <h2>Peças que estão a apaixonar os nossos clientes</h2>
+      </div>
+      <div class="product-grid">
+        ${featured.map((p,i)=>productCard(p,i)).join('')}
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:0">
+    ${decor('fern','dec-side-l2 dec-sm tone-brown secondary',122)}
+    <div class="wrap">
+      <div class="split reveal">
+        <div class="split-media" style="background:linear-gradient(150deg,var(--brown) 0%,var(--brown-dark) 100%);display:flex;align-items:center;justify-content:center;padding:40px">
+          <img src="assets/flyer-produtos.jpg" alt="Panfleto oficial Grão de Mostarda Personalizados" style="height:100%;width:auto;object-fit:contain;border-radius:6px;box-shadow:0 20px 50px rgba(0,0,0,.35)">
+          <span class="tag tag-mustard float-tag">100% personalizável</span>
+        </div>
+        <div class="split-text">
+          <span class="eyebrow">Feito à sua medida</span>
+          <h2>Cada peça pode contar a sua própria história</h2>
+          <p>Nomes, datas, versículos ou uma frase que só faz sentido para si — a maioria das nossas peças pode ser personalizada diretamente no formulário do produto, sem custo extra.</p>
+          <ul class="split-list">
+            <li><svg><use href="#i-check"/></svg> Escolha o texto, o versículo ou a data</li>
+            <li><svg><use href="#i-check"/></svg> Resumo claro antes de finalizar a encomenda</li>
+            <li><svg><use href="#i-check"/></svg> Ideal para batizados, crismas e aniversários</li>
+          </ul>
+          <a href="#/loja" data-route="/loja" class="btn btn-outline">Explorar personalizados</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:0">
+    ${decor('seeds','dec-near-title dec-xs tone-gold secondary faint',113)}
+    <div class="wrap">
+      <div class="section-head reveal" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;max-width:none">
+        <div>
+          <span class="eyebrow">Mais vendidos</span>
+          <h2>As escolhas preferidas de quem já encomendou</h2>
+        </div>
+        <span style="font-size:12px;color:var(--ink-soft)">Últimos 30 dias</span>
+      </div>
+      <div class="hscroll">
+        ${bestSellers.map((b,i)=>productCard(b.product,i)).join('')}
+      </div>
+    </div>
+  </section>
+
+  <section class="philosophy">
+    ${decor('leaf','dec-bl dec-lg tone-cream',12)}
+    ${decor('blossom','dec-tr dec-md tone-cream secondary',115)}
+    ${decor('seeds','dec-top-l dec-sm tone-cream secondary faint',116)}
+    <div class="wrap">
+      <blockquote class="reveal">"Não fazemos produtos em série. Fazemos peças que alguém vai guardar, oferecer ou usar todos os dias — e isso muda a forma como trabalhamos cada detalhe."</blockquote>
+      <cite class="reveal">A filosofia por trás da Grão de Mostarda</cite>
+      <div class="pillars">
+        <div class="pillar reveal reveal-1"><svg><use href="#i-seed"/></svg><h4>Fé sem exagero</h4><p>Mensagens cristãs apresentadas com elegância, para quem procura e para quem simplesmente aprecia o artesanato.</p></div>
+        <div class="pillar reveal reveal-2"><svg><use href="#i-scroll"/></svg><h4>Cuidado em cada etapa</h4><p>Do desenho à embalagem, cada peça passa por mãos que conhecem o processo do início ao fim.</p></div>
+        <div class="pillar reveal reveal-3"><svg><use href="#i-shield"/></svg><h4>Autenticidade</h4><p>Produção em pequena escala, sem atalhos, para que cada encomenda receba a atenção que merece.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    ${decor('twig','dec-tl dec-lg tone-orange secondary',119)}
+    ${decor('heart','dec-br dec-xs tone-gold secondary',120)}
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="eyebrow">Inspiração</span>
+        <h2>As histórias por trás de cada peça</h2>
+      </div>
+      <div class="hscroll">
+        ${reflectionPreview.map((s,i)=>reflectionCard(s,i)).join('')}
+      </div>
+      <div style="margin-top:32px" class="reveal"><a href="#/inspiracao" data-route="/inspiracao" class="btn btn-outline">Ver todas as reflexões</a></div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:0">
+    ${decor('daisy','dec-bl dec-sm tone-rose secondary',13)}
+    ${decor('line','dec-top-r dec-lg tone-gold secondary',117)}
+    <div class="wrap">
+      <div class="section-head center reveal">
+        <span class="eyebrow">Testemunhos</span>
+        <h2>O que dizem sobre as suas encomendas</h2>
+      </div>
+      <p class="testimonial-note reveal" style="text-align:center">Avaliações de demonstração — serão substituídas por avaliações reais e moderadas quando a loja entrar em produção.</p>
+      <div class="testi-grid">
+        ${reviews.map(t=>reviewCard(t)).join('')}
+      </div>
+      <div style="text-align:center;margin-top:32px" class="reveal"><a href="#/avaliacoes" data-route="/avaliacoes" class="btn btn-outline">Ver mais avaliações</a></div>
+    </div>
+  </section>
+
+  <section class="cta-band">
+    <div class="wrap">
+      <div>
+        <h2>Uma peça pronta a tornar-se especial</h2>
+        <p>Junte-se à nossa lista e receba primeiro as novas coleções e peças em edição limitada.</p>
+      </div>
+      <div>
+        <form class="newsletter-form" onsubmit="handleNewsletter(event)">
+          <input type="email" placeholder="O seu email" required>
+          <button type="submit">Subscrever</button>
+        </form>
+        <div class="consent-row">
+          <input type="checkbox" id="consentHome" checked>
+          <label for="consentHome">Aceito receber novidades e promoções por email. Posso cancelar a qualquer momento.</label>
+        </div>
+      </div>
+    </div>
+  </section>
+  `;
+}
+
+/* =========================================================
+   PAGE: LOJA (catálogo)
+   ========================================================= */
+let shopState = { query:'', cat:'todos', favOnly:false };
+
+function pageLoja(params){
+  if(params.get('cat')) shopState.cat = params.get('cat');
+  return `
+  <div class="page-header">
+    ${decor('twig','dec-tr dec-lg tone-gold secondary',21)}
+    ${decor('leaf','dec-tl dec-md tone-brown secondary',22)}
+    ${decor('seeds','dec-bl dec-sm tone-orange secondary faint',23)}
+    <span class="eyebrow">Catálogo</span>
+    <h1>A loja</h1>
+    <p>Explore todas as peças por categoria, ou pesquise diretamente pelo que procura.</p>
+  </div>
+  <section class="section" style="padding-top:0">
+    ${decor('daisy','dec-br dec-sm tone-gold secondary',24)}
+    <div class="wrap">
+      ${decorDivider(25,'reveal')}
+      <div class="shop-toolbar">
+        <div class="search-box">
+          <svg><use href="#i-search"/></svg>
+          <input type="text" id="shopSearch" placeholder="Pesquisar produtos…" value="${shopState.query}">
+        </div>
+        <div class="filter-pills" id="filterPills">
+          <button class="tag tag-btn ${shopState.cat==='todos'?'is-active':''}" data-cat="todos">Todos</button>
+          ${CATEGORIES.map(c=>`<button class="tag tag-btn ${shopState.cat===c.slug?'is-active':''}" data-cat="${c.slug}">${c.name}</button>`).join('')}
+          <button class="tag tag-btn ${shopState.favOnly?'is-active':''}" id="favOnlyBtn">♥ Favoritos</button>
+        </div>
+      </div>
+      <p class="results-count" id="resultsCount"></p>
+      <div class="product-grid" id="shopGrid"></div>
+    </div>
+  </section>
+  `;
+}
+
+function renderShopGrid(){
+  let list = PRODUCTS.filter(p=>{
+    const matchesCat = shopState.cat==='todos' || p.category===shopState.cat;
+    const matchesQuery = !shopState.query || p.name.toLowerCase().includes(shopState.query.toLowerCase()) || p.shortDesc.toLowerCase().includes(shopState.query.toLowerCase());
+    const matchesFav = !shopState.favOnly || state.favorites.has(p.id);
+    return matchesCat && matchesQuery && matchesFav;
+  });
+  $('#resultsCount').textContent = `${list.length} produto${list.length!==1?'s':''} encontrado${list.length!==1?'s':''}`;
+  const grid = $('#shopGrid');
+  if(list.length===0){
+    grid.style.display='none';
+    if(!$('#shopEmpty')){
+      const empty = document.createElement('div');
+      empty.id='shopEmpty';
+      empty.className='empty-state';
+      empty.innerHTML = `<svg><use href="#i-search"/></svg><p>Não encontrámos produtos com esses filtros.<br>Experimente outra categoria ou termo de pesquisa.</p>`;
+      grid.after(empty);
+    }
+  } else {
+    const old = $('#shopEmpty'); if(old) old.remove();
+    grid.style.display='grid';
+    grid.innerHTML = list.map((p,i)=>productCard(p,i)).join('');
+  }
+  runReveal();
+}
+
+function wireShopPage(){
+  const search = $('#shopSearch');
+  search.addEventListener('input', e=>{ shopState.query = e.target.value; renderShopGrid(); });
+  $$('#filterPills .tag-btn[data-cat]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      shopState.cat = btn.dataset.cat;
+      $$('#filterPills .tag-btn[data-cat]').forEach(b=>b.classList.toggle('is-active', b===btn));
+      renderShopGrid();
+    });
+  });
+  $('#favOnlyBtn').addEventListener('click', ()=>{
+    shopState.favOnly = !shopState.favOnly;
+    $('#favOnlyBtn').classList.toggle('is-active', shopState.favOnly);
+    renderShopGrid();
+  });
+  renderShopGrid();
+}
+
+/* =========================================================
+   PAGE: PRODUTO (detalhe)
+   ========================================================= */
+function pageProduto(slug){
+  const p = PRODUCTS.find(p=>p.slug===slug);
+  if(!p){
+    return `<div class="page-header"><h1>Produto não encontrado</h1><p>O produto que procura pode ter sido removido.</p><a href="#/loja" data-route="/loja" class="btn btn-primary" style="margin-top:20px">Voltar à loja</a></div>`;
+  }
+  const related = relatedProducts(p);
+  return `
+  <section class="section" style="padding-top:150px">
+    <div class="wrap">
+      <p class="breadcrumb"><a href="#/loja" data-route="/loja">Loja</a> / <a href="#/loja?cat=${p.category}" data-route="/loja">${catName(p.category)}</a> / ${p.name}</p>
+      <div class="pd-grid">
+        <div class="pd-gallery">
+          <div class="pd-gallery-main"><img id="pdMainImg" src="${p.images[0]}" alt="${p.name}"></div>
+          <div class="pd-thumbs">
+            ${p.images.map((img,i)=>`<button class="${i===0?'active':''}" data-img="${img}"><img src="${img}" alt="Vista ${i+1}"></button>`).join('')}
+          </div>
+        </div>
+        <div class="pd-info">
+          <span class="cat-label">${catName(p.category)}</span>
+          <h1>${p.name}</h1>
+          <div class="pd-price-row">
+            <span class="pd-price">${euro(p.price)}</span>
+            ${p.tags && p.tags[0] ? `<span class="tag tag-orange">${p.tags[0]}</span>` : ''}
+            ${stockTag(p)}
+          </div>
+          <p class="lede">${p.longDesc}</p>
+
+          ${p.personalizable ? `
+          <div class="pd-option">
+            <label>Personalização (texto, nome ou versículo)</label>
+            <input type="text" id="pdPersonalization" placeholder="Ex: 'Lucas 17:6' ou 'Família Almeida'" maxlength="60">
+          </div>` : ''}
+
+          ${p.sizes ? `
+          <div class="pd-option">
+            <label>Tamanho</label>
+            <div class="chip-row" id="sizeChips">
+              ${p.sizes.map((s,i)=>`<button class="chip ${i===0?'active':''}" data-size="${s}">${s}</button>`).join('')}
+            </div>
+          </div>` : ''}
+
+          <div class="pd-actions">
+            <div class="qty-stepper" id="pdQty">
+              <button data-delta="-1">–</button><span>1</span><button data-delta="1">+</button>
+            </div>
+            <button class="btn btn-primary" style="flex:1" id="pdAddBtn" ${p.stock<=0?'disabled':''}>${p.stock<=0?'Produto esgotado':'Adicionar ao carrinho'}</button>
+            <button class="fav-btn" data-id="${p.id}" onclick="toggleFavorite(${p.id})" aria-label="Adicionar aos favoritos">
+              <svg><use href="#i-heart"/></svg>
+            </button>
+          </div>
+
+          <div class="pd-badge-row">
+            <span class="tag">Envio em 3-5 dias úteis</span>
+            <span class="tag">Feito por encomenda</span>
+            <span class="tag tag-brown">Pagamento por WhatsApp</span>
+          </div>
+
+          <div class="pd-accordion">
+            <div class="acc-item open">
+              <button class="acc-head">Descrição<svg><use href="#i-plus"/></svg></button>
+              <div class="acc-panel"><div class="acc-panel-in">${p.longDesc}</div></div>
+            </div>
+            <div class="acc-item">
+              <button class="acc-head">Materiais<svg><use href="#i-plus"/></svg></button>
+              <div class="acc-panel"><div class="acc-panel-in">${p.materials}</div></div>
+            </div>
+            <div class="acc-item">
+              <button class="acc-head">Dimensões<svg><use href="#i-plus"/></svg></button>
+              <div class="acc-panel"><div class="acc-panel-in">${p.dimensions}</div></div>
+            </div>
+            <div class="acc-item">
+              <button class="acc-head">Envio &amp; Cuidados<svg><use href="#i-plus"/></svg></button>
+              <div class="acc-panel"><div class="acc-panel-in">Produzimos cada peça por encomenda, por isso o tempo de produção é de 3 a 7 dias úteis, mais o tempo de envio. Embalamos com papel de proteção e cuidado especial.</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      ${related.length ? `
+      <div style="margin-top:100px">
+        <div class="section-head">
+          <span class="eyebrow">Também pode gostar</span>
+          <h2>Produtos relacionados</h2>
+        </div>
+        <div class="product-grid">${related.map((rp,i)=>productCard(rp,i)).join('')}</div>
+      </div>` : ''}
+    </div>
+  </section>
+  `;
+}
+
+function wireProdutoPage(slug){
+  const p = PRODUCTS.find(p=>p.slug===slug);
+  if(!p) return;
+  $$('.pd-thumbs button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      $('#pdMainImg').src = btn.dataset.img;
+      $$('.pd-thumbs button').forEach(b=>b.classList.toggle('active', b===btn));
+    });
+  });
+  $$('#sizeChips .chip').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      $$('#sizeChips .chip').forEach(c=>c.classList.toggle('active', c===chip));
+    });
+  });
+  const qtyBox = $('#pdQty');
+  if(qtyBox){
+    let qty = 1;
+    qtyBox.addEventListener('click', e=>{
+      const btn = e.target.closest('button'); if(!btn) return;
+      qty = Math.max(1, Math.min(p.stock||1, qty + Number(btn.dataset.delta)));
+      qtyBox.querySelector('span').textContent = qty;
+    });
+    const addBtn = $('#pdAddBtn');
+    if(addBtn) addBtn.addEventListener('click', ()=> addToCart(p.id, qty));
+  }
+  $$('.acc-head').forEach(head=>{
+    head.addEventListener('click', ()=>{
+      const item = head.closest('.acc-item');
+      const wasOpen = item.classList.contains('open');
+      $$('.acc-item').forEach(i=>i.classList.remove('open'));
+      if(!wasOpen) item.classList.add('open');
+    });
+  });
+}
+
+/* =========================================================
+   PAGE: CHECKOUT
+   ========================================================= */
+function pageCheckout(){
+  if(state.cart.length===0){
+    return `<div class="page-header"><h1>O seu carrinho está vazio</h1><p>Adicione produtos à loja antes de finalizar uma encomenda.</p><a href="#/loja" data-route="/loja" class="btn btn-primary" style="margin-top:20px">Ver a loja</a></div>`;
+  }
+  return `
+  <section class="section" style="padding-top:150px">
+    <div class="wrap">
+      <p class="breadcrumb"><a href="#/loja" data-route="/loja">Loja</a> / Finalizar encomenda</p>
+      <div class="section-head">
+        <span class="eyebrow">Passo final</span>
+        <h2>Finalizar encomenda</h2>
+        <p>Preencha os seus dados. Depois de enviar, entramos em contacto pelo WhatsApp para combinar o pagamento.</p>
+      </div>
+      <div class="contact-grid">
+        <div class="form-panel reveal">
+          <form id="checkoutForm">
+            <div class="form-row-2">
+              <div><label>Nome completo</label><input type="text" name="name" required placeholder="O seu nome"></div>
+              <div><label>Telemóvel</label><input type="tel" name="phone" required placeholder="+351 9XX XXX XXX"></div>
+            </div>
+            <label>Email</label>
+            <input type="email" name="email" required placeholder="O seu email">
+            <label>Morada completa</label>
+            <input type="text" name="address" required placeholder="Rua, número, andar">
+            <div class="form-row-2">
+              <div><label>Código postal</label><input type="text" name="postal" required placeholder="0000-000"></div>
+              <div><label>Cidade</label><input type="text" name="city" required placeholder="Cidade"></div>
+            </div>
+            <label>Observações</label>
+            <textarea name="notes" rows="4" placeholder="Alguma indicação especial para a sua encomenda?"></textarea>
+            <div class="consent-row">
+              <input type="checkbox" id="checkoutConsent" required>
+              <label for="checkoutConsent">Confirmo que os dados acima estão corretos e aceito ser contactado(a) por WhatsApp/email para combinar o pagamento e envio.</label>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block" style="margin-top:24px">Enviar encomenda</button>
+          </form>
+        </div>
+        <div class="reveal reveal-2">
+          <div class="order-summary-box">
+            <h4>Resumo da encomenda</h4>
+            ${state.cart.map(c=>{
+              const p = PRODUCTS.find(p=>p.id===c.id);
+              return `<div class="osb-item"><span>${c.qty}x ${p.name}</span><span>${euro(p.price*c.qty)}</span></div>`;
+            }).join('')}
+            <div class="osb-total"><span>Total</span><span>${euro(cartTotal())}</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  `;
+}
+
+function wireCheckoutPage(){
+  const form = $('#checkoutForm');
+  if(!form) return;
+  form.addEventListener('submit', e=>{
+    e.preventDefault();
+    const fd = new FormData(form);
+    const customer = {
+      name: fd.get('name'), phone: fd.get('phone'), email: fd.get('email'),
+      address: fd.get('address'), postal: fd.get('postal'), city: fd.get('city'),
+      notes: fd.get('notes'),
+    };
+    const { order, mailtoUrl } = submitOrder(customer);
+    window.open(mailtoUrl, '_blank');
+    location.hash = `#/confirmacao/${order.id}`;
+  });
+}
+
+/* =========================================================
+   PAGE: CONFIRMAÇÃO
+   ========================================================= */
+function pageConfirmacao(orderId){
+  const order = state.lastOrder && state.lastOrder.id===orderId ? state.lastOrder : null;
+  return `
+  <section class="section" style="padding-top:160px">
+    <div class="wrap">
+      <div class="confirm-box reveal">
+        <div class="ok-icon"><svg><use href="#i-check"/></svg></div>
+        <h2>Encomenda recebida!</h2>
+        <p>Obrigado${order?`, ${order.customer.name.split(' ')[0]}`:''}! A sua encomenda foi registada. Abrimos um email para ${SHOP.email} com todos os detalhes — se não abriu automaticamente, contacte-nos diretamente.</p>
+        <div class="confirm-id">Número da encomenda: ${orderId}</div>
+        <p style="margin-top:20px">O pagamento é combinado diretamente pelo WhatsApp. Clique abaixo para nos enviar uma mensagem com o número da sua encomenda.</p>
+        <a class="btn btn-whatsapp" href="${SHOP.whatsappUrlPayment(orderId)}" target="_blank" rel="noopener"><svg style="width:17px;height:17px"><use href="#i-wa"/></svg>Combinar pagamento no WhatsApp</a>
+        <div style="margin-top:14px"><a href="#/loja" data-route="/loja" class="btn btn-outline">Voltar à loja</a></div>
+      </div>
+    </div>
+  </section>
+  `;
+}
+
+/* =========================================================
+   PAGE: SOBRE
+   ========================================================= */
+/* Ilustração discreta de uma semente a germinar/crescer — reutilizada em duas secções da página Sobre Nós */
+function seedGrowSVG(cls){
+  return `<svg class="seed-grow ${cls||''}" viewBox="0 0 120 160" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="60" cy="146" rx="9" ry="6.5" fill="currentColor" stroke="none" opacity=".92"/>
+    <path d="M60 146 C58 112,62 78,60 34"/>
+    <path d="M60 96 C40 91,29 71,33 50 C51 55,61 71,60 96Z" opacity=".85"/>
+    <path d="M60 58 C81 53,91 33,86 13 C67 18,57 34,60 58Z" opacity=".85"/>
+  </svg>`;
+}
+
+/* =========================================================
+   ELEMENTOS DECORATIVOS DISCRETOS
+   (inspirados nos posters oficiais da marca — ramos, flores delicadas,
+   folhas e sementes de mostarda. Sempre pointer-events:none, nunca
+   sobre texto/produtos/botões, com pequenas variações via seededRand
+   para não repetir exatamente o mesmo desenho em todas as páginas)
+   ========================================================= */
+function decorSprigSVG(seed){
+  const rot = (-18 + seededRand(seed)*36).toFixed(1);
+  return `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(${rot}deg)">
+    <path d="M12 92C30 74 42 54 56 22"/>
+    <path d="M30 78C22 71 18 63 22 55" stroke-width="1.5"/>
+    <path d="M40 63C48 58 54 58 59 51" stroke-width="1.5"/>
+    <path d="M48 43C42 37 40 31 44 23" stroke-width="1.5"/>
+    <g transform="translate(56,20)">
+      <circle r="2.6" fill="currentColor" stroke="none" opacity=".95"/>
+      <path d="M0 0C4.2-3 4.2-8.6 0-11C-4.2-8.6-4.2-3 0 0Z" fill="currentColor" opacity=".8" stroke="none"/>
+      <path d="M0 0C4.2-3 4.2-8.6 0-11C-4.2-8.6-4.2-3 0 0Z" fill="currentColor" opacity=".8" stroke="none" transform="rotate(72)"/>
+      <path d="M0 0C4.2-3 4.2-8.6 0-11C-4.2-8.6-4.2-3 0 0Z" fill="currentColor" opacity=".8" stroke="none" transform="rotate(144)"/>
+      <path d="M0 0C4.2-3 4.2-8.6 0-11C-4.2-8.6-4.2-3 0 0Z" fill="currentColor" opacity=".8" stroke="none" transform="rotate(216)"/>
+      <path d="M0 0C4.2-3 4.2-8.6 0-11C-4.2-8.6-4.2-3 0 0Z" fill="currentColor" opacity=".8" stroke="none" transform="rotate(288)"/>
+    </g>
+    <g transform="translate(23,54)scale(.7)">
+      <circle r="2.2" fill="currentColor" stroke="none" opacity=".85"/>
+      <path d="M0 0C3.6-2.6 3.6-7.4 0-9.4C-3.6-7.4-3.6-2.6 0 0Z" fill="currentColor" opacity=".65" stroke="none"/>
+      <path d="M0 0C3.6-2.6 3.6-7.4 0-9.4C-3.6-7.4-3.6-2.6 0 0Z" fill="currentColor" opacity=".65" stroke="none" transform="rotate(72)"/>
+      <path d="M0 0C3.6-2.6 3.6-7.4 0-9.4C-3.6-7.4-3.6-2.6 0 0Z" fill="currentColor" opacity=".65" stroke="none" transform="rotate(144)"/>
+      <path d="M0 0C3.6-2.6 3.6-7.4 0-9.4C-3.6-7.4-3.6-2.6 0 0Z" fill="currentColor" opacity=".65" stroke="none" transform="rotate(216)"/>
+      <path d="M0 0C3.6-2.6 3.6-7.4 0-9.4C-3.6-7.4-3.6-2.6 0 0Z" fill="currentColor" opacity=".65" stroke="none" transform="rotate(288)"/>
+    </g>
+  </svg>`;
+}
+function decorFlowerSVG(seed){
+  const rot = (seededRand(seed)*360).toFixed(1);
+  return `<svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="1.4" style="transform:rotate(${rot}deg)">
+    <g transform="translate(30,30)">
+      <circle r="3.4" fill="currentColor" stroke="none" opacity=".95"/>
+      <path d="M0 0C6-5 6-14 0-18C-6-14-6-5 0 0Z" fill="currentColor" opacity=".72" stroke="none"/>
+      <path d="M0 0C6-5 6-14 0-18C-6-14-6-5 0 0Z" fill="currentColor" opacity=".72" stroke="none" transform="rotate(72)"/>
+      <path d="M0 0C6-5 6-14 0-18C-6-14-6-5 0 0Z" fill="currentColor" opacity=".72" stroke="none" transform="rotate(144)"/>
+      <path d="M0 0C6-5 6-14 0-18C-6-14-6-5 0 0Z" fill="currentColor" opacity=".72" stroke="none" transform="rotate(216)"/>
+      <path d="M0 0C6-5 6-14 0-18C-6-14-6-5 0 0Z" fill="currentColor" opacity=".72" stroke="none" transform="rotate(288)"/>
+    </g>
+  </svg>`;
+}
+function decorLeafSVG(seed){
+  const rot = (-14 + seededRand(seed)*28).toFixed(1);
+  return `<svg viewBox="0 0 60 90" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" style="transform:rotate(${rot}deg)">
+    <path d="M30 85C14 62 12 34 30 8C48 34 46 62 30 85Z" fill="currentColor" opacity=".28"/>
+    <path d="M30 85C14 62 12 34 30 8C48 34 46 62 30 85Z" opacity=".8"/>
+    <path d="M30 82V14" opacity=".65"/>
+    <path d="M30 40C24 44 20 48 18 54" opacity=".5" stroke-width="1.1"/>
+    <path d="M30 55C36 59 40 63 42 69" opacity=".5" stroke-width="1.1"/>
+  </svg>`;
+}
+/** Folha alongada tipo samambaia — várias folíolas ao longo de um talo fino, diferente da folha "gota" */
+function decorFernSVG(seed){
+  const rot = (-16 + seededRand(seed)*32).toFixed(1);
+  const n = 5;
+  let leaflets = '';
+  for(let i=0;i<n;i++){
+    const t = i/(n-1);
+    const y = (84 - t*74).toFixed(1);
+    const len = (10 + (1-t)*8).toFixed(1);
+    leaflets += `<path d="M30 ${y}C${30-len} ${y-4} ${30-len*1.4} ${y-10} ${30-len*1.6} ${y-16}" opacity=".55" stroke-width="1.1"/>`;
+    leaflets += `<path d="M30 ${y}C${30+len} ${y-4} ${30+len*1.4} ${y-10} ${30+len*1.6} ${y-16}" opacity=".55" stroke-width="1.1"/>`;
+  }
+  return `<svg viewBox="0 0 60 90" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="transform:rotate(${rot}deg)">
+    <path d="M30 88V10" opacity=".7"/>
+    ${leaflets}
+  </svg>`;
+}
+/** Ramo fino sem flor — apenas linha orgânica com 2-3 folhas pequenas, para zonas que pedem menos peso visual */
+function decorTwigSVG(seed){
+  const rot = (-20 + seededRand(seed)*40).toFixed(1);
+  return `<svg viewBox="0 0 100 60" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(${rot}deg)">
+    <path d="M4 50C30 40 55 30 92 8" opacity=".75"/>
+    <path d="M28 43C22 40 18 36 18 30" opacity=".5" stroke-width="1.05"/>
+    <path d="M52 32C48 26 48 20 52 15" opacity=".5" stroke-width="1.05"/>
+    <path d="M74 18C72 12 74 8 80 6" opacity=".5" stroke-width="1.05"/>
+    <circle cx="92" cy="8" r="1.8" fill="currentColor" stroke="none" opacity=".8"/>
+  </svg>`;
+}
+/** Flor pequena tipo margarida — pétalas finas e pontiagudas, diferente da flor arredondada existente */
+function decorDaisySVG(seed){
+  const rot = (seededRand(seed)*360).toFixed(1);
+  let petals = '';
+  for(let i=0;i<8;i++){
+    petals += `<path d="M0-3C2-9 2-15 0-19C-2-15-2-9 0-3Z" fill="currentColor" opacity=".68" stroke="none" transform="rotate(${i*45})"/>`;
+  }
+  return `<svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="1" style="transform:rotate(${rot}deg)">
+    <g transform="translate(30,30)">
+      ${petals}
+      <circle r="3.2" fill="currentColor" stroke="none" opacity=".95"/>
+    </g>
+  </svg>`;
+}
+/** Flor maior, ponto focal — pétalas largas e sobrepostas, para usar com moderação como destaque */
+function decorBlossomSVG(seed){
+  const rot = (seededRand(seed)*360).toFixed(1);
+  return `<svg viewBox="0 0 90 90" fill="none" stroke="currentColor" stroke-width="1.2" style="transform:rotate(${rot}deg)">
+    <g transform="translate(45,45)">
+      <circle r="5" fill="currentColor" stroke="none" opacity=".95"/>
+      <path d="M0 0C9-8 9-22 0-28C-9-22-9-8 0 0Z" fill="currentColor" opacity=".55" stroke="none"/>
+      <path d="M0 0C9-8 9-22 0-28C-9-22-9-8 0 0Z" fill="currentColor" opacity=".55" stroke="none" transform="rotate(60)"/>
+      <path d="M0 0C9-8 9-22 0-28C-9-22-9-8 0 0Z" fill="currentColor" opacity=".55" stroke="none" transform="rotate(120)"/>
+      <path d="M0 0C9-8 9-22 0-28C-9-22-9-8 0 0Z" fill="currentColor" opacity=".55" stroke="none" transform="rotate(180)"/>
+      <path d="M0 0C9-8 9-22 0-28C-9-22-9-8 0 0Z" fill="currentColor" opacity=".55" stroke="none" transform="rotate(240)"/>
+      <path d="M0 0C9-8 9-22 0-28C-9-22-9-8 0 0Z" fill="currentColor" opacity=".55" stroke="none" transform="rotate(300)"/>
+    </g>
+  </svg>`;
+}
+function decorSeedsSVG(seed){
+  const r1=seededRand(seed), r2=seededRand(seed+1), r3=seededRand(seed+2);
+  const cx1=(14+r1*6).toFixed(1), cy1=(20+r1*8).toFixed(1);
+  const cx2=(40+r2*6).toFixed(1), cy2=(12+r2*8).toFixed(1);
+  const cx3=(64+r3*6).toFixed(1), cy3=(24+r3*8).toFixed(1);
+  return `<svg viewBox="0 0 80 40" fill="currentColor">
+    <ellipse cx="${cx1}" cy="${cy1}" rx="6" ry="7.6" opacity=".78" transform="rotate(${(-20+r1*40).toFixed(1)} ${cx1} ${cy1})"/>
+    <ellipse cx="${cx2}" cy="${cy2}" rx="5.2" ry="6.6" opacity=".72" transform="rotate(${(-20+r2*40).toFixed(1)} ${cx2} ${cy2})"/>
+    <ellipse cx="${cx3}" cy="${cy3}" rx="5.6" ry="7" opacity=".78" transform="rotate(${(-20+r3*40).toFixed(1)} ${cx3} ${cy3})"/>
+  </svg>`;
+}
+function decorLineSVG(seed){
+  const rot = (-10 + seededRand(seed)*20).toFixed(1);
+  return `<svg viewBox="0 0 160 60" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" style="transform:rotate(${rot}deg)">
+    <path d="M4 44C34 10 66 54 96 22C112 6 128 14 156 4" opacity=".8"/>
+    <circle cx="96" cy="22" r="2.4" fill="currentColor" stroke="none" opacity=".85"/>
+    <circle cx="30" cy="24" r="1.8" fill="currentColor" stroke="none" opacity=".7"/>
+    <circle cx="140" cy="10" r="1.8" fill="currentColor" stroke="none" opacity=".7"/>
+  </svg>`;
+}
+function decorHeartSVG(seed){
+  const rot = (-10 + seededRand(seed)*20).toFixed(1);
+  return `<svg viewBox="0 0 40 36" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(${rot}deg)">
+    <path d="M20 32C8 24 2 16 2 9.5A7 7 0 0 1 15 5.5C16.5 7 18.5 9 20 11C21.5 9 23.5 7 25 5.5A7 7 0 0 1 38 9.5C38 16 32 24 20 32Z" fill="currentColor" opacity=".2"/>
+    <path d="M20 32C8 24 2 16 2 9.5A7 7 0 0 1 15 5.5C16.5 7 18.5 9 20 11C21.5 9 23.5 7 25 5.5A7 7 0 0 1 38 9.5C38 16 32 24 20 32Z" opacity=".8"/>
+  </svg>`;
+}
+/** Composição maior tipo "buquê" — ramo + duas flores + folhas + sementes, para cantos de destaque (ex.: hero) */
+function decorBouquetSVG(seed){
+  const rot = (-8 + seededRand(seed)*16).toFixed(1);
+  return `<svg viewBox="0 0 220 220" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(${rot}deg)">
+    <path d="M20 200C60 160 90 120 110 60" stroke-width="2.2" opacity=".8"/>
+    <path d="M50 168C38 158 30 148 32 136" stroke-width="1.5" opacity=".55"/>
+    <path d="M70 140C82 132 92 132 100 122" stroke-width="1.5" opacity=".55"/>
+    <path d="M84 108C76 100 72 92 76 80" stroke-width="1.5" opacity=".55"/>
+    <g transform="translate(110,58)">
+      <circle r="4.6" fill="currentColor" stroke="none" opacity=".95"/>
+      <path d="M0 0C7.6-5.4 7.6-15.6 0-20C-7.6-15.6-7.6-5.4 0 0Z" fill="currentColor" opacity=".8" stroke="none"/>
+      <path d="M0 0C7.6-5.4 7.6-15.6 0-20C-7.6-15.6-7.6-5.4 0 0Z" fill="currentColor" opacity=".8" stroke="none" transform="rotate(72)"/>
+      <path d="M0 0C7.6-5.4 7.6-15.6 0-20C-7.6-15.6-7.6-5.4 0 0Z" fill="currentColor" opacity=".8" stroke="none" transform="rotate(144)"/>
+      <path d="M0 0C7.6-5.4 7.6-15.6 0-20C-7.6-15.6-7.6-5.4 0 0Z" fill="currentColor" opacity=".8" stroke="none" transform="rotate(216)"/>
+      <path d="M0 0C7.6-5.4 7.6-15.6 0-20C-7.6-15.6-7.6-5.4 0 0Z" fill="currentColor" opacity=".8" stroke="none" transform="rotate(288)"/>
+    </g>
+    <g transform="translate(40,150)scale(.62)">
+      <circle r="4.6" fill="currentColor" stroke="none" opacity=".9"/>
+      <path d="M0 0C7.6-5.4 7.6-15.6 0-20C-7.6-15.6-7.6-5.4 0 0Z" fill="currentColor" opacity=".7" stroke="none"/>
+      <path d="M0 0C7.6-5.4 7.6-15.6 0-20C-7.6-15.6-7.6-5.4 0 0Z" fill="currentColor" opacity=".7" stroke="none" transform="rotate(72)"/>
+      <path d="M0 0C7.6-5.4 7.6-15.6 0-20C-7.6-15.6-7.6-5.4 0 0Z" fill="currentColor" opacity=".7" stroke="none" transform="rotate(144)"/>
+      <path d="M0 0C7.6-5.4 7.6-15.6 0-20C-7.6-15.6-7.6-5.4 0 0Z" fill="currentColor" opacity=".7" stroke="none" transform="rotate(216)"/>
+      <path d="M0 0C7.6-5.4 7.6-15.6 0-20C-7.6-15.6-7.6-5.4 0 0Z" fill="currentColor" opacity=".7" stroke="none" transform="rotate(288)"/>
+    </g>
+    <path d="M90 96C68 92 56 100 48 116C64 118 78 112 90 96Z" fill="currentColor" opacity=".28" stroke-width="1.3"/>
+    <path d="M60 176C48 168 40 168 30 176C40 184 52 184 60 176Z" fill="currentColor" opacity=".28" stroke-width="1.3"/>
+    <ellipse cx="150" cy="150" rx="5.4" ry="7" opacity=".7" fill="currentColor" stroke="none" transform="rotate(20 150 150)"/>
+    <ellipse cx="168" cy="130" rx="4.6" ry="6" opacity=".62" fill="currentColor" stroke="none" transform="rotate(-14 168 130)"/>
+    <ellipse cx="140" cy="176" rx="4.8" ry="6.2" opacity=".65" fill="currentColor" stroke="none" transform="rotate(30 140 176)"/>
+  </svg>`;
+}
+/** kind: 'sprig'|'flower'|'leaf'|'seeds'|'line'|'heart'|'bouquet'|'fern'|'twig'|'daisy'|'blossom'; cls: classes de posição/tom (ex.: 'dec-tr dec-md tone-gold') */
+function decor(kind, cls, seed){
+  const svg = kind==='sprig' ? decorSprigSVG(seed)
+            : kind==='flower' ? decorFlowerSVG(seed)
+            : kind==='leaf' ? decorLeafSVG(seed)
+            : kind==='line' ? decorLineSVG(seed)
+            : kind==='heart' ? decorHeartSVG(seed)
+            : kind==='bouquet' ? decorBouquetSVG(seed)
+            : kind==='fern' ? decorFernSVG(seed)
+            : kind==='twig' ? decorTwigSVG(seed)
+            : kind==='daisy' ? decorDaisySVG(seed)
+            : kind==='blossom' ? decorBlossomSVG(seed)
+            : decorSeedsSVG(seed);
+  return `<div class="decor ${cls}" aria-hidden="true">${svg}</div>`;
+}
+/** Separador decorativo em fluxo normal (não absoluto) — linha orgânica delicada, usada entre secções/projetos */
+function decorDivider(seed, cls){
+  return `<div class="decor-divider ${cls||''}" aria-hidden="true">${decorLineSVG(seed)}</div>`;
+}
+
+function pageSobre(){
+  const spGraos = PRODUCTS.find(p=>p.slug==='caneca-graos-de-fe');
+  const spCaderno = PRODUCTS.find(p=>p.slug==='caderno-devocional-a4');
+  const spTshirt = PRODUCTS.find(p=>p.slug==='tshirt-grao-de-mostarda');
+  const spBiblia = PRODUCTS.find(p=>p.slug==='biblia-sagrada-capa-personalizada');
+
+  return `
+  <section class="sb-hero">
+    ${decor('bouquet','dec-tl-out dec-xl tone-gold bold',51)}
+    ${decor('twig','dec-side-r dec-md tone-brown secondary',52)}
+    ${decor('seeds','dec-top-r dec-sm tone-orange secondary faint',57)}
+    <div class="wrap reveal">
+      <img class="sb-hero-logo" src="assets/logo.webp" alt="Atelier Grão de Mostarda">
+      <span class="eyebrow">Sobre nós</span>
+      <h1>Uma história que começou com Deus</h1>
+      <p>Conheça o propósito por trás do Atelier Grão de Mostarda.</p>
+      ${seedGrowSVG()}
+    </div>
+  </section>
+
+  <section class="sb-origin">
+    ${decor('fern','dec-mid-l dec-md tone-brown secondary',53)}
+    ${decor('seeds','dec-mid-r dec-sm tone-gold secondary faint',54)}
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="eyebrow">O nascimento do Atelier</span>
+        <h2>Tudo começou com um propósito</h2>
+      </div>
+      <p class="sb-lead reveal">O Atelier Grão de Mostarda nasceu de um propósito que Deus colocou em nossos corações. O próprio nome Grão de Mostarda foi Deus quem nos deu. E, desde o início, entendemos que este atelier não seria apenas um negócio, mas uma ferramenta através da qual poderíamos servir, criar, inspirar e, acima de tudo, levar a mensagem de Deus às pessoas.</p>
+      <p class="sb-pull reveal">"Este atelier não seria apenas um negócio, mas uma ferramenta para servir, criar e inspirar."</p>
+    </div>
+  </section>
+
+  <section class="sb-destaque">
+    ${decor('sprig','dec-tr-out dec-lg tone-cream bold',60)}
+    <div class="wrap reveal">
+      ${seedGrowSVG()}
+      <span class="eyebrow">A inspiração</span>
+      <p class="sb-verse">"Se tiverdes fé como um grão de mostarda…"<span>Mateus 17:20</span></p>
+      <p class="sb-body">Uma pequena semente pode parecer insignificante, mas, quando plantada, cresce e produz frutos. É assim que enxergamos o nosso trabalho: cada produto, cada palavra, cada versículo e cada presente pode ser uma pequena semente plantada no coração de alguém.</p>
+    </div>
+  </section>
+
+  <section class="sb-products">
+    ${decor('leaf','dec-side-l2 dec-sm tone-brown secondary',82)}
+    <div class="wrap">
+      <div class="split reveal">
+        <div class="split-text">
+          <span class="eyebrow">Muito além de produtos</span>
+          <h2>Criamos produtos. Semeamos mensagens.</h2>
+          <p>Criamos produtos personalizados com carinho, dedicação e atenção a cada detalhe. Mas aquilo que fazemos vai muito além de criar e vender produtos.</p>
+          <p style="margin-top:14px">Temos uma missão. Queremos usar aquilo que Deus colocou em nossas mãos para espalhar o Evangelho, transmitir fé, levar esperança e fazer com que mais pessoas conheçam o amor de Jesus.</p>
+        </div>
+        <div class="sb-products-grid">
+          ${spGraos?`<a href="#/produto/${spGraos.slug}" data-route="/produto/${spGraos.slug}"><img src="${spGraos.images[0]}" alt="${spGraos.name}" loading="lazy"></a>`:''}
+          ${spCaderno?`<a href="#/produto/${spCaderno.slug}" data-route="/produto/${spCaderno.slug}" class="sp-offset"><img src="${spCaderno.images[0]}" alt="${spCaderno.name}" loading="lazy"></a>`:''}
+          ${spBiblia?`<a href="#/produto/${spBiblia.slug}" data-route="/produto/${spBiblia.slug}"><img src="${spBiblia.images[0]}" alt="${spBiblia.name}" loading="lazy"></a>`:''}
+          ${spTshirt?`<a href="#/produto/${spTshirt.slug}" data-route="/produto/${spTshirt.slug}" class="sp-offset"><img src="${spTshirt.images[0]}" alt="${spTshirt.name}" loading="lazy"></a>`:''}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sb-destaque">
+    ${decor('line','dec-bl dec-md tone-cream secondary',85)}
+    ${decor('seeds','dec-tr dec-sm tone-cream secondary faint',84)}
+    <div class="wrap reveal">
+      <span class="eyebrow">A nossa missão</span>
+      <h2 style="color:#fff;margin-top:10px;font-size:clamp(24px,3.4vw,34px)">Uma missão que vai além do atelier</h2>
+      <p class="sb-verse" style="margin-top:22px">"Ide por todo o mundo e pregai o evangelho a toda criatura."<span>Marcos 16:15</span></p>
+      <p class="sb-body">Talvez não consigamos chegar fisicamente a todos os lugares do mundo, mas acreditamos que uma mensagem pode chegar onde os nossos pés não chegam.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    ${decor('bouquet','dec-br-out dec-lg tone-gold bold',87)}
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="eyebrow">Pequenas sementes, grandes impactos</span>
+        <h2>O que uma pequena peça pode fazer</h2>
+      </div>
+      <div class="seed-cards">
+        <div class="seed-card reveal reveal-1"><svg><use href="#i-scroll"/></svg><p>Um caderno pode acompanhar alguém durante uma fase difícil.</p></div>
+        <div class="seed-card reveal reveal-2"><svg><use href="#i-quote"/></svg><p>Um versículo pode trazer esperança num dia de tristeza.</p></div>
+        <div class="seed-card reveal reveal-3"><svg><use href="#i-gift"/></svg><p>Um presente pode lembrar alguém de que Deus não se esqueceu dela.</p></div>
+        <div class="seed-card reveal reveal-4"><svg><use href="#i-heart"/></svg><p>Uma pequena frase pode despertar uma conversa sobre Jesus.</p></div>
+      </div>
+      <p class="seed-cards-close reveal">E é assim que queremos semear.</p>
+    </div>
+  </section>
+
+  <section class="sb-emotional">
+    ${decor('seeds','dec-mid-r dec-xs tone-orange secondary faint',56)}
+    <div class="wrap reveal">
+      <p>Cada encomenda que sai do nosso atelier leva consigo um pouco da nossa história, do nosso carinho e da nossa fé. Tudo o que fazemos é para a honra e para a glória do nome de Deus.</p>
+      <p class="sb-em-strong">Não queremos que as pessoas olhem apenas para aquilo que as nossas mãos conseguem criar, mas que, através do nosso trabalho, possam enxergar Aquele que nos deu o talento, a criatividade, a força e o propósito.</p>
+    </div>
+  </section>
+
+  <section class="manifest-band">
+    ${decor('bouquet','dec-tl-out dec-lg tone-cream bold',88)}
+    ${decor('twig','dec-side-r dec-md tone-cream secondary',89)}
+    <div class="wrap reveal">
+      <div class="manifest-seed">🌱</div>
+      <h2>Somos Grão de Mostarda.</h2>
+      <p class="manifest-sub">Uma pequena semente nas mãos de um Deus grandioso.</p>
+      <div class="manifest-lines">
+        <span>Criamos com amor.</span>
+        <span>Personalizamos com propósito.</span>
+        <span>Servimos com fé.</span>
+      </div>
+      <p class="manifest-final">E semeamos para a eternidade.</p>
+      <div class="manifest-foot">
+        <strong>Atelier Grão de Mostarda</strong>
+        <span>Pequenos detalhes. Grandes sementes de fé.</span>
+      </div>
+    </div>
+  </section>
+  `;
+}
+
+/* =========================================================
+   PAGE: PROJETOS
+   ========================================================= */
+function pageProjetos(){
+  return `
+  <div class="page-header">
+    ${decor('fern','dec-tl dec-md tone-gold secondary',41)}
+    ${decor('seeds','dec-tr dec-sm tone-orange secondary faint',45)}
+    <span class="eyebrow">Projetos</span>
+    <h1>O que estamos a construir</h1>
+    <p>Para além da loja, a Grão de Mostarda está por trás de mais do que um projeto. Estes são os que já estão em curso.</p>
+  </div>
+  <section class="section" style="padding-top:0">
+    ${decor('seeds','dec-bl dec-md tone-orange secondary',42)}
+    ${decor('leaf','dec-tr dec-lg tone-brown secondary',43)}
+    <div class="wrap">
+      ${decorDivider(44,'reveal')}
+      <div class="projeto-grid">
+        <div class="projeto-card reveal">
+          <div class="projeto-media"><img src="assets/logo.webp" alt="Grão de Mostarda Personalizados"></div>
+          <div class="projeto-body">
+            <span class="tag tag-mustard" style="align-self:flex-start;margin-bottom:12px">Ativo</span>
+            <h3>Grão de Mostarda Personalizados</h3>
+            <p>A nossa loja de artesanato cristão personalizado — Bíblias, canecas, roupa, cadernos, decoração e presentes feitos com amor, fé e propósito, inspirados em Lucas 17:6 e Mateus 17:20.</p>
+            <div class="projeto-status"><a href="#/loja" data-route="/loja" class="btn btn-outline btn-sm">Visitar a loja</a></div>
+          </div>
+        </div>
+        <div class="projeto-card reveal reveal-2">
+          <div class="projeto-media placeholder"><svg><use href="#i-book"/></svg></div>
+          <div class="projeto-body">
+            <span class="tag" style="align-self:flex-start;margin-bottom:12px">Em desenvolvimento</span>
+            <h3>Ministério Bíblico</h3>
+            <p>Um novo projeto da Grão de Mostarda, ainda em fase inicial. Em breve partilharemos aqui a missão, os objetivos e as atividades deste projeto.</p>
+          </div>
+        </div>
+      </div>
+      ${decorDivider(48,'reveal')}
+    </div>
+  </section>
+  `;
+}
+
+/* =========================================================
+   PAGE: INSPIRAÇÃO
+   ========================================================= */
+function pageInspiracao(){
+  const origin = REFLECTIONS.find(s=>s.featured);
+  const stories = REFLECTIONS.filter(s=>!s.featured);
+  return `
+  <section class="insp-hero">
+    ${decor('twig','dec-side-l dec-lg tone-cream',61)}
+    ${decor('daisy','dec-tr dec-sm tone-rose secondary',62)}
+    ${decor('seeds','dec-bl dec-sm tone-cream secondary faint',66)}
+    ${decor('line','dec-bot-r dec-md tone-gold secondary',67)}
+    <div class="wrap reveal">
+      <span class="eyebrow">Inspiração</span>
+      <h1>Inspiração que ganha forma</h1>
+      <p>Histórias da Bíblia, um versículo de cada vez — e como cada uma pode inspirar uma peça personalizada, feita para acompanhar a sua fé no dia a dia.</p>
+    </div>
+  </section>
+
+  <section class="origin-band">
+    ${decor('sprig','dec-tr-out dec-lg tone-cream bold',68)}
+    ${decor('seeds','dec-bl dec-sm tone-cream secondary faint',69)}
+    ${decor('line','dec-top-l dec-md tone-gold secondary',70)}
+    <div class="wrap origin-in reveal">
+      <div class="origin-icon"><svg><use href="#i-seed"/></svg></div>
+      <span class="eyebrow">A nossa origem</span>
+      <h2>A história por trás do nosso nome</h2>
+      <p class="origin-verse">"Se tiverdes fé do tamanho de um grão de mostarda, direis a esta amoreira: desarraiga-te e planta-te no mar; e ela vos obedecerá."<span>Lucas 17:6 · Mateus 17:20</span></p>
+      <p class="origin-text">${origin.long.split('" ').slice(1).join('" ')}</p>
+      <img class="origin-logo" src="assets/logo.webp" alt="Grão de Mostarda Personalizados">
+    </div>
+  </section>
+
+  <section class="section">
+    ${decor('fern','dec-tl dec-md tone-brown secondary',63)}
+    ${decor('seeds','dec-tr dec-sm tone-gold secondary',71)}
+    <div class="wrap">
+      ${decorDivider(73,'reveal')}
+      <div class="section-head reveal">
+        <span class="eyebrow">Histórias de fé</span>
+        <h2>Reflexões que inspiram cada peça</h2>
+      </div>
+      <div class="bible-grid">
+        ${stories.map((s,i)=>reflectionCard(s,i)).join('')}
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:0;background:var(--sand)">
+    ${decor('twig','dec-br dec-lg tone-orange secondary',64)}
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="eyebrow">Da inspiração ao produto</span>
+        <h2>Cada tema pode tornar-se uma peça sua</h2>
+      </div>
+      <div class="insp-link-grid">
+        ${INSPIRATION_LINKS.map((l,i)=>`
+        <a href="#/loja?cat=${l.cat}" data-route="/loja" class="insp-link-card reveal reveal-${(i%4)+1}">
+          <img src="${PIMG(l.phrase, l.seed, l.cat)}" alt="${l.phrase}" loading="lazy">
+          <span>${l.phrase}</span>
+        </a>`).join('')}
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    ${decor('blossom','dec-tr dec-md tone-rose',65)}
+    ${decor('seeds','dec-bl dec-sm tone-orange secondary faint',76)}
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="eyebrow">Galeria</span>
+        <h2>Momentos de inspiração</h2>
+      </div>
+      <div class="insp-gallery">
+        ${INSPIRATION_GALLERY.map((g,i)=>`
+        <a href="#/loja" data-route="/loja" class="reveal reveal-${(i%4)+1}" title="${g.label}">
+          <img src="${placeholderSVG(g.label, g.seed, g.icon)}" alt="${g.label}" loading="lazy">
+        </a>`).join('')}
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-band">
+    ${decor('daisy','dec-tl dec-sm tone-cream secondary',77)}
+    <div class="wrap" style="justify-content:center;text-align:center;flex-direction:column">
+      <h2>Transforme uma destas reflexões numa peça sua</h2>
+      <p style="margin:14px auto 26px">Escolha um versículo e nós ajudamo-lo a torná-lo parte de um produto personalizado.</p>
+      <a href="#/loja" data-route="/loja" class="btn" style="background:var(--brown-deep);color:#fff">Ver produtos personalizados</a>
+    </div>
+  </section>
+  `;
+}
+
+/* =========================================================
+   PAGE: AVALIAÇÕES
+   ========================================================= */
+let reviewState = { stars:0, sort:'recent' };
+function pageAvaliacoes(){
+  return `
+  <div class="page-header">
+    <span class="eyebrow">Avaliações</span>
+    <h1>O que dizem os nossos clientes</h1>
+    <p>Avaliações de demonstração — a estrutura já suporta moderação, compra verificada e filtros por estrelas.</p>
+  </div>
+  <section class="section" style="padding-top:0">
+    <div class="wrap">
+      <div class="testi-toolbar">
+        <div class="testi-summary" id="reviewSummary"></div>
+        <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+          <div class="filter-pills" id="starFilters">
+            <button class="tag tag-btn is-active" data-stars="0">Todas</button>
+            ${[5,4,3,2,1].map(s=>`<button class="tag tag-btn" data-stars="${s}">${s}★</button>`).join('')}
+          </div>
+          <select id="sortReviews" style="padding:9px 12px;border:1px solid var(--line);border-radius:20px;font-family:var(--mono);font-size:12px;background:var(--paper)">
+            <option value="recent">Mais recentes</option>
+            <option value="rating">Melhor avaliação</option>
+          </select>
+        </div>
+      </div>
+      <div class="testi-grid" id="reviewGrid"></div>
+    </div>
+  </section>
+  `;
+}
+function renderReviewSummary(){
+  const total = REVIEWS_DEMO.length;
+  const avg = (REVIEWS_DEMO.reduce((s,r)=>s+r.rating,0)/total).toFixed(1);
+  $('#reviewSummary').innerHTML = `
+    <span class="avg">${avg}</span>
+    <div><div class="stars">${'<svg><use href="#i-star"/></svg>'.repeat(Math.round(avg))}</div><span class="count">${total} avaliações de demonstração</span></div>
+  `;
+}
+function renderReviewGrid(){
+  let list = REVIEWS_DEMO.filter(r=> reviewState.stars===0 || r.rating===reviewState.stars);
+  list = list.slice().sort((a,b)=> reviewState.sort==='rating' ? b.rating-a.rating : new Date(b.date)-new Date(a.date));
+  $('#reviewGrid').innerHTML = list.length ? list.map(t=>reviewCard(t)).join('') : `<div class="empty-state" style="grid-column:1/-1"><svg><use href="#i-star"/></svg><p>Sem avaliações para este filtro.</p></div>`;
+  runReveal();
+}
+function wireAvaliacoesPage(){
+  renderReviewSummary();
+  renderReviewGrid();
+  $$('#starFilters .tag-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      reviewState.stars = Number(btn.dataset.stars);
+      $$('#starFilters .tag-btn').forEach(b=>b.classList.toggle('is-active', b===btn));
+      renderReviewGrid();
+    });
+  });
+  $('#sortReviews').addEventListener('change', e=>{ reviewState.sort = e.target.value; renderReviewGrid(); });
+}
+
+/* =========================================================
+   PAGE: ENCOMENDAS ESPECIAIS
+   ========================================================= */
+function pageEncomendasEspeciais(){
+  return `
+  <div class="page-header">
+    <span class="eyebrow">Feito à sua ideia</span>
+    <h1>Encomendas Especiais</h1>
+    <p>Tem uma ideia que não encontra na loja? Conte-nos os detalhes e criamos uma peça só para si.</p>
+  </div>
+  <section class="section" style="padding-top:0">
+    <div class="wrap">
+      <div class="contact-grid">
+        <div class="form-panel reveal">
+          <form id="specialForm">
+            <div class="form-row-2">
+              <div><label>Nome</label><input type="text" name="name" required></div>
+              <div><label>Telefone</label><input type="tel" name="phone" required></div>
+            </div>
+            <label>Email</label>
+            <input type="email" name="email" required>
+            <div class="form-row-2">
+              <div><label>Tipo de produto</label>
+                <select name="type" required>
+                  <option value="">Escolha uma categoria</option>
+                  ${CATEGORIES.map(c=>`<option value="${c.name}">${c.name}</option>`).join('')}
+                  <option value="Outro">Outro</option>
+                </select>
+              </div>
+              <div><label>Quantidade</label><input type="number" name="qty" min="1" value="1" required></div>
+            </div>
+            <label>Descrição da ideia</label>
+            <textarea name="description" rows="4" required placeholder="Descreva a peça que imagina"></textarea>
+            <label>Frase / versículo</label>
+            <input type="text" name="verse" placeholder="Ex: Lucas 17:6">
+            <div class="form-row-2">
+              <div><label>Cores</label><input type="text" name="colors" placeholder="Ex: bege e dourado"></div>
+              <div><label>Dimensões</label><input type="text" name="dimensions" placeholder="Ex: 30x20cm"></div>
+            </div>
+            <label>Data pretendida</label>
+            <input type="date" name="deadline">
+            <label>Imagem de referência (opcional)</label>
+            <input type="file" name="refImage" accept="image/*">
+            <label>Observações</label>
+            <textarea name="notes" rows="3"></textarea>
+            <button type="submit" class="btn btn-primary btn-block" style="margin-top:24px">Enviar pedido</button>
+          </form>
+        </div>
+        <div class="reveal reveal-2">
+          <div class="contact-info">
+            <h3 style="font-size:20px;margin-bottom:20px">Como funciona</h3>
+            <div class="contact-info-item"><svg><use href="#i-check"/></svg><div><h4>1. Conte-nos a ideia</h4><p>Quanto mais detalhe, melhor conseguimos orçamentar e desenhar a peça.</p></div></div>
+            <div class="contact-info-item"><svg><use href="#i-check"/></svg><div><h4>2. Confirmamos consigo</h4><p>Entramos em contacto por WhatsApp ou email para afinar detalhes e valor.</p></div></div>
+            <div class="contact-info-item"><svg><use href="#i-check"/></svg><div><h4>3. Produzimos com cuidado</h4><p>Cada peça especial é feita à mão, com o mesmo cuidado de qualquer encomenda.</p></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  `;
+}
+function wireSpecialForm(){
+  const form = $('#specialForm');
+  if(!form) return;
+  form.addEventListener('submit', e=>{
+    e.preventDefault();
+    const fd = new FormData(form);
+    const data = Object.fromEntries(['name','phone','email','type','qty','description','verse','colors','dimensions','deadline','notes'].map(k=>[k, fd.get(k)||'']));
+    const { id, mailtoUrl } = submitSpecialOrder(data);
+    window.open(mailtoUrl,'_blank');
+    showToast(`Pedido enviado! Referência: ${id}`);
+    form.reset();
+  });
+}
+
+/* =========================================================
+   PAGE: FAQ
+   ========================================================= */
+function pageFaq(){
+  return `
+  <div class="page-header">
+    <span class="eyebrow">Dúvidas</span>
+    <h1>Perguntas Frequentes</h1>
+    <p>Não encontrou o que procurava? <a href="#/contacto" data-route="/contacto" style="text-decoration:underline;color:var(--orange-dark)">Fale connosco</a>.</p>
+  </div>
+  <section class="section" style="padding-top:0">
+    <div class="wrap">
+      <div class="faq-list">
+        ${FAQ_DATA.map((f,i)=>`
+          <div class="faq-item ${i===0?'open':''}">
+            <button class="faq-q">${f.q}<svg><use href="#i-plus"/></svg></button>
+            <div class="faq-a"><div class="faq-a-in">${f.a}</div></div>
+          </div>`).join('')}
+      </div>
+    </div>
+  </section>
+  `;
+}
+function wireFaqPage(){
+  $$('.faq-q').forEach(q=>{
+    q.addEventListener('click', ()=>{
+      const item = q.closest('.faq-item');
+      item.classList.toggle('open');
+    });
+  });
+}
+
+/* =========================================================
+   PAGE: AJUDA (Envios, Trocas)
+   ========================================================= */
+const HELP_PAGES = {
+  envios: {
+    title:'Envios & Prazos',
+    body:[
+      'Produzimos cada peça por encomenda, por isso o tempo de produção varia entre 3 a 7 dias úteis, consoante o tipo de personalização.',
+      'Depois de produzida, a encomenda é enviada para todo o território nacional. O prazo de entrega e o valor dos portes são confirmados após o envio da encomenda, com base na morada indicada.',
+      'Para datas especiais (batizados, crismas, casamentos), recomendamos encomendar com pelo menos 2 semanas de antecedência.',
+    ]
+  },
+  trocas: {
+    title:'Trocas & Devoluções',
+    body:[
+      'Aceitamos trocas em produtos não personalizados, dentro de 14 dias após a receção, desde que o produto esteja em perfeitas condições.',
+      'Produtos personalizados (com nome, data ou versículo específico) só podem ser trocados em caso de defeito de fabrico — avaliamos cada caso através do WhatsApp.',
+      'Para iniciar uma troca ou devolução, contacte-nos com o número da sua encomenda e uma fotografia do produto.',
+    ]
+  }
+};
+function pageAjuda(slug){
+  const info = HELP_PAGES[slug];
+  if(!info){
+    return `<div class="page-header"><h1>Página não encontrada</h1><a href="#/faq" data-route="/faq" class="btn btn-primary" style="margin-top:20px">Ver FAQ</a></div>`;
+  }
+  return `
+  <div class="page-header">
+    <span class="eyebrow">Ajuda</span>
+    <h1>${info.title}</h1>
+  </div>
+  <section class="section" style="padding-top:0">
+    <div class="wrap" style="max-width:760px;margin:0 auto">
+      ${info.body.map(p=>`<p class="reveal" style="font-size:15.5px;margin-bottom:18px">${p}</p>`).join('')}
+    </div>
+  </section>
+  `;
+}
+
+/* =========================================================
+   PAGE: CONTACTO
+   ========================================================= */
+function pageContacto(){
+  return `
+  <div class="page-header">
+    ${decor('leaf','dec-tl dec-md tone-brown secondary',31)}
+    ${decor('daisy','dec-tr dec-sm tone-rose secondary',32)}
+    <span class="eyebrow">Fale connosco</span>
+    <h1>Contacto</h1>
+    <p>Dúvidas sobre uma encomenda, prazos ou uma peça personalizada? Estamos por aqui.</p>
+  </div>
+  <section class="section" style="padding-top:0">
+    ${decor('twig','dec-bl dec-md tone-orange secondary',33)}
+    ${decor('seeds','dec-tr dec-sm tone-gold secondary faint',34)}
+    <div class="wrap contact-grid">
+      <div class="form-panel reveal">
+        <h3 style="font-size:20px;margin-bottom:6px">Envie-nos uma mensagem</h3>
+        <p style="font-size:13.5px">Respondemos, em média, dentro de 1 a 2 dias úteis.</p>
+        <form id="contactForm">
+          <label>Nome</label>
+          <input type="text" name="name" required placeholder="O seu nome">
+          <label>Email</label>
+          <input type="email" name="email" required placeholder="O seu email">
+          <label>Assunto</label>
+          <input type="text" name="subject" placeholder="Ex: Encomenda personalizada">
+          <label>Mensagem</label>
+          <textarea name="message" rows="5" required placeholder="Escreva aqui a sua mensagem"></textarea>
+          <button type="submit" class="btn btn-primary" style="margin-top:22px">Enviar mensagem</button>
+        </form>
+      </div>
+      <div class="reveal reveal-2">
+        <h3 style="font-size:20px;margin-bottom:20px">Outras formas de nos encontrar</h3>
+        <div class="contact-info-item"><svg><use href="#i-mail"/></svg><div><h4>Email</h4><p><a href="mailto:${SHOP.email}">${SHOP.email}</a></p></div></div>
+        <div class="contact-info-item"><svg><use href="#i-wa"/></svg><div><h4>WhatsApp</h4><p><a href="${SHOP.whatsappUrl}" target="_blank" rel="noopener">Falar connosco agora</a></p></div></div>
+        <div class="contact-info-item"><svg><use href="#i-ig"/></svg><div><h4>Instagram</h4><p><a href="${SHOP.instagramUrl}" target="_blank" rel="noopener">${SHOP.instagramHandle}</a></p></div></div>
+        <div class="contact-info-item"><svg><use href="#i-clock"/></svg><div><h4>Horário de resposta</h4><p>Segunda a sexta, 9h–18h</p></div></div>
+        <div class="contact-info-item"><svg><use href="#i-truck"/></svg><div><h4>Envios</h4><p>Produção por encomenda: 3-7 dias úteis + envio</p></div></div>
+        <div class="footer-social" style="margin-top:24px">
+          <a class="fs-ig" href="${SHOP.instagramUrl}" target="_blank" rel="noopener" aria-label="Instagram"><svg><use href="#i-ig"/></svg></a>
+          <a class="fs-wa" href="${SHOP.whatsappUrl}" target="_blank" rel="noopener" aria-label="WhatsApp"><svg><use href="#i-wa"/></svg></a>
+          <a class="fs-mail" href="mailto:${SHOP.email}" aria-label="Email"><svg><use href="#i-mail"/></svg></a>
+        </div>
+      </div>
+    </div>
+  </section>
+  `;
+}
+function wireContactForm(){
+  const form = $('#contactForm');
+  if(!form) return;
+  form.addEventListener('submit', e=>{
+    e.preventDefault();
+    const fd = new FormData(form);
+    const subject = encodeURIComponent(`Contacto pelo site — ${fd.get('subject')||'Sem assunto'}`);
+    const body = encodeURIComponent(`Nome: ${fd.get('name')}\nEmail: ${fd.get('email')}\n\nMensagem:\n${fd.get('message')}`);
+    window.open(`mailto:${SHOP.email}?subject=${subject}&body=${body}`, '_blank');
+    showToast('Mensagem preparada — confirme o envio no seu email.');
+    form.reset();
+  });
+}
+
+/* =========================================================
+   PAGE: ADMIN (demonstração de leitura — ver ARCHITECTURE.md)
+   ========================================================= */
+function markOrderCompleted(orderId){
+  const list = JSON.parse(localStorage.getItem('gm_orders_demo')||'[]');
+  const idx = list.findIndex(o=>o.id===orderId);
+  if(idx===-1) return;
+  list[idx].status = 'concluída';
+  localStorage.setItem('gm_orders_demo', JSON.stringify(list));
+  showToast(`Encomenda ${orderId} marcada como concluída — "Mais vendidos" foi recalculado.`);
+  router();
+}
+function pageAdmin(){
+  const orders = JSON.parse(localStorage.getItem('gm_orders_demo')||'[]');
+  const newsletter = getNewsletterList();
+  const bs = computeBestSellers(30,5);
+  const topRated = computeTopRatedProducts(6);
+  return `
+  <div class="page-header" style="padding-top:130px">
+    <span class="eyebrow">Área reservada</span>
+    <h1>Administração (demonstração)</h1>
+    <p>Pré-visualização do painel de gestão. Em produção teria autenticação e ligação real à base de dados.</p>
+  </div>
+  <section class="section" style="padding-top:0">
+    <div class="wrap">
+      <div class="arch-note" style="margin-bottom:28px">
+        <svg><use href="#i-server"/></svg>
+        <p><strong>Isto é uma maquete.</strong> Não há login nem dados protegidos — serve apenas para mostrar o que a administração da loja poderá fazer assim que o backend estiver ligado.</p>
+      </div>
+      <div class="admin-shell">
+        <div class="admin-side">
+          <div class="as-brand"><img src="assets/logo.webp" alt=""><strong style="font-family:var(--serif)">Painel</strong></div>
+          <ul>
+            <li class="active">Visão geral</li>
+            <li>Produtos</li>
+            <li>Encomendas</li>
+            <li>Mais vendidos</li>
+            <li>Avaliações</li>
+            <li>Newsletter</li>
+            <li>Encomendas especiais</li>
+            <li>FAQ &amp; Projetos</li>
+          </ul>
+        </div>
+        <div class="admin-main">
+          <div class="admin-stats">
+            <div class="admin-stat"><div class="num">${PRODUCTS.length}</div><div class="lbl">Produtos ativos</div></div>
+            <div class="admin-stat"><div class="num">${orders.length}</div><div class="lbl">Encomendas nesta sessão</div></div>
+            <div class="admin-stat"><div class="num">${newsletter.length}</div><div class="lbl">Subscritores (demo)</div></div>
+            <div class="admin-stat"><div class="num">${REVIEWS_DEMO.length}</div><div class="lbl">Avaliações por moderar</div></div>
+          </div>
+          <h4 style="margin-bottom:12px">Encomendas registadas nesta sessão (localStorage)</h4>
+          ${orders.length ? `<table class="admin-table" style="margin-bottom:30px">
+            <thead><tr><th>Nº</th><th>Cliente</th><th>Total</th><th>Estado</th><th></th></tr></thead>
+            <tbody>${orders.slice().reverse().map(o=>`<tr>
+              <td>${o.id}</td><td>${o.customer?.name||'—'}</td><td>${euro(o.total)}</td>
+              <td>${o.status}</td>
+              <td>${o.status!=='concluída' ? `<button class="btn btn-outline btn-sm" onclick="markOrderCompleted('${o.id}')">Marcar como concluída</button>` : '✓'}</td>
+            </tr>`).join('')}</tbody>
+          </table>` : `<p style="font-size:13.5px;margin-bottom:30px">Ainda sem encomendas nesta sessão — finalize uma compra na loja para ver aqui.</p>`}
+          <div class="arch-note" style="margin-bottom:28px">
+            <svg><use href="#i-alert"/></svg>
+            <p>Só encomendas com estado <strong>"concluída"</strong> contam para "Mais vendidos" — reflete a regra de que uma venda só se confirma depois do pagamento, não no momento da encomenda. Marque uma encomenda como concluída acima para ver a tabela abaixo recalcular-se.</p>
+          </div>
+          <h4 style="margin-bottom:12px">Mais vendidos — últimos 30 dias (calculado a partir das encomendas concluídas)</h4>
+          <table class="admin-table" style="margin-bottom:30px">
+            <thead><tr><th>Produto</th><th>Categoria</th><th>Unidades vendidas</th></tr></thead>
+            <tbody>${bs.length ? bs.map(b=>`<tr><td>${b.product.name}</td><td>${catName(b.product.category)}</td><td>${b.unitsSold}</td></tr>`).join('') : `<tr><td colspan="3">Sem encomendas concluídas neste período.</td></tr>`}</tbody>
+          </table>
+          <h4 style="margin-bottom:12px">Melhores avaliados (média ponderada — ver computeTopRatedProducts() em app.js)</h4>
+          <table class="admin-table" style="margin-bottom:30px">
+            <thead><tr><th>Produto</th><th>Nº avaliações</th><th>Média simples</th><th>Pontuação ponderada</th></tr></thead>
+            <tbody>${topRated.map(t=>`<tr><td>${t.product.name}</td><td>${t.reviewCount}</td><td>${t.avgRating.toFixed(2)}</td><td>${t.score.toFixed(2)}</td></tr>`).join('')}</tbody>
+          </table>
+          <h4 style="margin-bottom:12px">Capacidades previstas para a administração</h4>
+          <ul class="admin-capability-list">
+            <li><svg><use href="#i-check"/></svg>Adicionar/editar produtos, preços e stock</li>
+            <li><svg><use href="#i-check"/></svg>Ativar/desativar produtos</li>
+            <li><svg><use href="#i-check"/></svg>Consultar e gerir encomendas</li>
+            <li><svg><use href="#i-check"/></svg>Moderar avaliações antes de publicar</li>
+            <li><svg><use href="#i-check"/></svg>Gerir subscritores da newsletter</li>
+            <li><svg><use href="#i-check"/></svg>Enviar notificações a subscritores</li>
+            <li><svg><use href="#i-check"/></svg>Gerir encomendas especiais</li>
+            <li><svg><use href="#i-check"/></svg>Editar FAQ, Ajuda e páginas de Projetos</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+  `;
+}
+
+/* =========================================================
+   REVEAL ON SCROLL
+   ========================================================= */
+let revealObserver;
+function runReveal(){
+  if(revealObserver) revealObserver.disconnect();
+  const els = $$('.reveal');
+  if(!('IntersectionObserver' in window)){ els.forEach(el=>el.classList.add('is-visible')); return; }
+  revealObserver = new IntersectionObserver((entries)=>{
+    entries.forEach(entry=>{
+      if(entry.isIntersecting){
+        entry.target.classList.add('is-visible');
+        revealObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold:0.12, rootMargin:'0px 0px -40px 0px' });
+  els.forEach(el=>revealObserver.observe(el));
+}
+
+/* =========================================================
+   ROUTER
+   ========================================================= */
+const ROUTES_META = {
+  '/':                     { title:`${SHOP.name} — Amor, Fé e Propósito`, desc:'Bíblias, canecas, roupa, cadernos e decoração cristã personalizados, feitos com amor, fé e propósito.' },
+  '/loja':                 { title:`Loja — ${SHOP.name}`, desc:'Explore o catálogo completo: Bíblias, reforma de Bíblia, canecas, t-shirts, decoração, kits de pintura, porta-chaves e cadernos personalizados.' },
+  '/sobre':                { title:`Sobre Nós — ${SHOP.name}`, desc:'Conheça a história da Grão de Mostarda Personalizados.' },
+  '/inspiracao':           { title:`Inspiração — ${SHOP.name}`, desc:'As reflexões bíblicas por trás de cada peça da Grão de Mostarda.' },
+  '/projetos':             { title:`Projetos — ${SHOP.name}`, desc:'Os projetos da Grão de Mostarda: a loja e o Ministério Bíblico.' },
+  '/contacto':             { title:`Contacto — ${SHOP.name}`, desc:'Fale com a equipa da Grão de Mostarda sobre encomendas, prazos ou peças personalizadas.' },
+  '/checkout':             { title:`Finalizar encomenda — ${SHOP.name}`, desc:'Finalize a sua encomenda.' },
+  '/faq':                  { title:`Perguntas Frequentes — ${SHOP.name}`, desc:'Respostas às perguntas mais comuns.' },
+  '/avaliacoes':           { title:`Avaliações — ${SHOP.name}`, desc:'O que dizem os nossos clientes.' },
+  '/encomendas-especiais': { title:`Encomendas Especiais — ${SHOP.name}`, desc:'Peça uma peça feita à sua ideia.' },
+  '/admin':                { title:`Administração — ${SHOP.name}`, desc:'Painel de administração (demonstração).' },
+};
+
+function parseHash(){
+  let hash = location.hash || '#/';
+  hash = hash.slice(1);
+  const [pathAndQuery] = [hash];
+  const [path, queryString] = pathAndQuery.split('?');
+  const params = new URLSearchParams(queryString || '');
+  return { path: path || '/', params };
+}
+
+function router(){
+  const { path, params } = parseHash();
+  const main = $('#main');
+  let html = '';
+  let metaKey = path;
+  let productSlug = null, orderIdParam = null, helpSlug = null;
+
+  if(path === '/' || path === ''){
+    html = pageHome();
+  } else if(path === '/loja'){
+    html = pageLoja(params);
+  } else if(path.startsWith('/produto/')){
+    productSlug = path.replace('/produto/','');
+    html = pageProduto(productSlug);
+    const p = PRODUCTS.find(p=>p.slug===productSlug);
+    metaKey = null;
+    document.title = p ? `${p.name} — ${SHOP.name}` : `Produto — ${SHOP.name}`;
+    $('#meta-desc').setAttribute('content', p ? p.shortDesc : 'Produto artesanal personalizado.');
+  } else if(path === '/checkout'){
+    html = pageCheckout();
+  } else if(path.startsWith('/confirmacao/')){
+    orderIdParam = path.replace('/confirmacao/','');
+    html = pageConfirmacao(orderIdParam);
+    metaKey = null;
+    document.title = `Encomenda confirmada — ${SHOP.name}`;
+  } else if(path === '/sobre'){
+    html = pageSobre();
+  } else if(path === '/inspiracao'){
+    html = pageInspiracao();
+  } else if(path === '/projetos'){
+    html = pageProjetos();
+  } else if(path === '/avaliacoes'){
+    html = pageAvaliacoes();
+  } else if(path === '/encomendas-especiais'){
+    html = pageEncomendasEspeciais();
+  } else if(path === '/faq'){
+    html = pageFaq();
+  } else if(path.startsWith('/ajuda/')){
+    helpSlug = path.replace('/ajuda/','');
+    html = pageAjuda(helpSlug);
+    metaKey = null;
+    document.title = `${(HELP_PAGES[helpSlug]||{}).title || 'Ajuda'} — ${SHOP.name}`;
+  } else if(path === '/contacto'){
+    html = pageContacto();
+  } else if(path === '/admin'){
+    html = pageAdmin();
+  } else if(path === '/newsletter/cancelar'){
+    html = pageNewsletterCancelar();
+    metaKey = null;
+    document.title = `Cancelar subscrição — ${SHOP.name}`;
+  } else {
+    html = pageHome();
+    metaKey = '/';
+  }
+
+  main.innerHTML = `<div class="page active">${html}</div>`;
+
+  if(metaKey && ROUTES_META[metaKey]){
+    document.title = ROUTES_META[metaKey].title;
+    $('#meta-desc').setAttribute('content', ROUTES_META[metaKey].desc);
+  }
+
+  // active nav state
+  $$('a[data-route]').forEach(a=>{
+    const r = a.dataset.route;
+    const isHome = r === '/' && (path === '/' || path === '');
+    const isMatch = r === path || isHome || (r === '/loja' && path.startsWith('/produto/'));
+    a.classList.toggle('active', isMatch);
+  });
+
+  // page-specific wiring
+  if(path === '/loja') wireShopPage();
+  if(productSlug) wireProdutoPage(productSlug);
+  if(path === '/checkout') wireCheckoutPage();
+  if(path === '/avaliacoes') wireAvaliacoesPage();
+  if(path === '/encomendas-especiais') wireSpecialForm();
+  if(path === '/faq') wireFaqPage();
+  if(path === '/contacto') wireContactForm();
+  if(path === '/newsletter/cancelar') wireUnsubscribePage();
+
+  updateBadges();
+  window.scrollTo({top:0, behavior:'instant' in window ? 'instant' : 'auto'});
+  closeMobileNav();
+  requestAnimationFrame(runReveal);
+}
+
+window.addEventListener('hashchange', router);
+
+/* =========================================================
+   HEADER SMART HIDE ON SCROLL
+   ========================================================= */
+(function(){
+  let lastY = 0;
+  const header = $('#siteHeader');
+  window.addEventListener('scroll', ()=>{
+    const y = window.scrollY;
+    if(y > lastY && y > 140){ header.classList.add('hide'); }
+    else { header.classList.remove('hide'); }
+    lastY = y;
+  }, { passive:true });
+})();
+
+/* =========================================================
+   GLOBAL EVENT WIRING (runs once)
+   ========================================================= */
+document.addEventListener('DOMContentLoaded', ()=>{
+  // official contact links (single source of truth: SHOP)
+  $('#waFloat').href = SHOP.whatsappUrl;
+  $('#drawerWaBtn').href = SHOP.whatsappUrl;
+
+  // mobile nav
+  $('#btnMobileNav').addEventListener('click', openMobileNav);
+  $('#closeMobileNav').addEventListener('click', closeMobileNav);
+  // cart
+  $('#btnCartToggle').addEventListener('click', openCart);
+  $('#closeCart').addEventListener('click', closeCart);
+  // overlay closes whichever drawer is open
+  $('#drawerOverlay').addEventListener('click', ()=>{ closeCart(); closeMobileNav(); });
+  // favorites shortcut -> go to shop with favOnly
+  $('#btnFavToggle').addEventListener('click', ()=>{
+    shopState.favOnly = true;
+    location.hash = '#/loja';
+  });
+  // search shortcut -> go to shop and focus search
+  $('#btnSearch').addEventListener('click', ()=>{
+    location.hash = '#/loja';
+    setTimeout(()=>{ const s = $('#shopSearch'); if(s) s.focus(); }, 250);
+  });
+  // reflection modal close
+  $('#closeModal').addEventListener('click', closeStoryModal);
+  $('#storyModal').addEventListener('click', (e)=>{ if(e.target.id==='storyModal') closeStoryModal(); });
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ closeStoryModal(); closeCart(); closeMobileNav(); } });
+  // footer newsletter
+  $('#footerNewsletterForm').addEventListener('submit', handleNewsletter);
+
+  // REQUER BACKEND (documentado em ARCHITECTURE.md): marca a visita atual
+  // do "utilizador" para fins do futuro email de reengajamento aos 60 dias.
+  try{
+    const list = getNewsletterList();
+    if(list.length){
+      list.forEach(s=>{ s.lastVisit = new Date().toISOString(); });
+      saveNewsletterList(list);
+    }
+  }catch(e){/* localStorage indisponível — sem efeito no protótipo */}
+
+  renderCart();
+  router();
+});
