@@ -50,7 +50,21 @@ function sanitizeText(str, maxLen=500){
 }
 function isValidPhonePT(v){ return /^(\+351\s?)?9\d{8}$/.test(String(v||'').replace(/[\s-]/g,'')) || /^(\+351\s?)?[2-9]\d{8}$/.test(String(v||'').replace(/[\s-]/g,'')); }
 function isValidPostalPT(v){ return /^\d{4}-\d{3}$/.test(String(v||'').trim()); }
+/* Validação de formulários com mensagens específicas por campo (não genéricas) — usada em
+   checkout, encomendas especiais e contacto. `rules` é { fieldName: { required, validate, msg } }. */
+function setFieldError(form, name, msg){
+  const input = form.querySelector(`[name="${name}"]`);
+  const err = form.querySelector(`.field-error[data-for="${name}"]`);
+  if(input) input.setAttribute('aria-invalid', msg ? 'true' : 'false');
+  if(err) err.textContent = msg || '';
+  return !msg;
+}
+function validateForm(form, rules){
+  const fd = new FormData(form);
+  let firstInvalid = null, ok = true;
+  const values = {};
   for(const name in rules){
+    const raw = sanitizeText(fd.get(name), rules[name].maxLen || 500);
     values[name] = raw;
     let msg = '';
     if(rules[name].required && !raw) msg = rules[name].requiredMsg || 'Este campo é obrigatório.';
