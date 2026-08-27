@@ -32,6 +32,45 @@ const SHOP = {
 const $  = (sel, ctx=document) => ctx.querySelector(sel);
 const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
 const euro = n => n.toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
+
+/* ---------- Segurança: escaping, sanitização e leitura segura de localStorage ----------
+   Qualquer valor que tenha origem em input do utilizador (pesquisa, formulários, parâmetros
+   de rota) tem de passar por escapeHtml() antes de ser inserido num template que vai para
+   innerHTML — nunca confiar que o navegador não vai executar HTML/JS escondido num nome,
+   morada ou termo de pesquisa. */
+function escapeHtml(str){
+  return String(str==null?'':str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+/* Remove caracteres de controlo, apara espaços e limita o comprimento — aplicado a todo o
+   texto vindo de formulários antes de guardar/usar (inclui o corpo dos emails mailto:). */
+function sanitizeText(str, maxLen=500){
+  return String(str==null?'':str).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g,'').trim().slice(0,maxLen);
+}
+function isValidPhonePT(v){ return /^(\+351\s?)?9\d{8}$/.test(String(v||'').replace(/[\s-]/g,'')) || /^(\+351\s?)?[2-9]\d{8}$/.test(String(v||'').replace(/[\s-]/g,'')); }
+function isValidPostalPT(v){ return /^\d{4}-\d{3}$/.test(String(v||'').trim()); }
+  for(const name in rules){
+    values[name] = raw;
+    let msg = '';
+    if(rules[name].required && !raw) msg = rules[name].requiredMsg || 'Este campo é obrigatório.';
+    else if(raw && rules[name].validate && !rules[name].validate(raw)) msg = rules[name].msg;
+    if(!setFieldError(form, name, msg)){ ok = false; if(!firstInvalid) firstInvalid = form.querySelector(`[name="${name}"]`); }
+  }
+  if(firstInvalid) firstInvalid.focus();
+  return { ok, values };
+}
+/* Leitura defensiva de localStorage: nunca confiar que o conteúdo está bem formado — pode ter
+   sido editado manualmente nas DevTools. Devolve sempre o fallback em caso de erro ou forma
+   inesperada (aqui: array). */
+function readJSON(key, fallback){
+  try{
+    const raw = localStorage.getItem(key);
+    if(raw==null) return fallback;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(fallback) ? (Array.isArray(parsed) ? parsed : fallback) : parsed;
+  }catch(e){ return fallback; }
+}
 const uid = (prefix) => `${prefix}-${Math.abs(hashStr(prefix+Object.keys(localStorage).length+document.title.length+performance.now())).toString(36).slice(0,4)}${(seqCounter++).toString(36)}`;
 let seqCounter = 1000;
 function hashStr(s){ s=String(s); let h=0; for(let i=0;i<s.length;i++){ h=(h<<5)-h+s.charCodeAt(i); h|=0; } return h; }
@@ -239,6 +278,11 @@ PRODUCTS.forEach((p,i)=>{
   p.demo = true;
   p.images = [ PIMG(p.name, p.id, p.category), PIMG(p.name+' — vista 2', p.id+50, p.category), PIMG(p.name+' — detalhe', p.id+90, p.category) ];
 });
+/* Impede alteração de preços/stock em runtime (ex.: a partir da consola do navegador).
+   Isto NÃO substitui um backend — ver ARCHITECTURE.md — mas fecha o vetor mais óbvio de
+   um utilizador reatribuir PRODUCTS[i].price antes de finalizar uma encomenda. */
+PRODUCTS.forEach(p=>{ Object.freeze(p.images); Object.freeze(p); });
+Object.freeze(PRODUCTS);
 
 const relatedProducts = (product, n=4) =>
   PRODUCTS.filter(p=>p.category===product.category && p.id!==product.id).slice(0,n);
@@ -289,8 +333,14 @@ const ORDERS_DEMO = buildDemoOrderHistory();
  * só passaria a ler as encomendas da base de dados em vez destas
  * duas fontes locais.
  */
+/* Uma entrada de encomenda só é válida para efeitos de cálculo se tiver a forma esperada —
+   protege "Mais vendidos"/admin contra localStorage editado manualmente nas DevTools. */
+function isValidOrderShape(o){
+  return o && typeof o==='object' && typeof o.id==='string' && Array.isArray(o.items) &&
+    o.items.every(it=>it && Number.isFinite(it.qty) && it.qty>0 && Number.isFinite(it.productId));
+}
 function getAllOrders(){
-  const local = JSON.parse(localStorage.getItem('gm_orders_demo')||'[]');
+  const local = readJSON('gm_orders_demo', []).filter(isValidOrderShape);
   return [...ORDERS_DEMO, ...local];
 }
 function computeBestSellers(periodDays, limit=8){
@@ -473,6 +523,8 @@ function stockOf(id){ const p = PRODUCTS.find(p=>p.id===id); return p ? p.stock 
 function addToCart(id, qty=1){
   const p = PRODUCTS.find(p=>p.id===id);
   if(!p) return;
+  qty = Number.isFinite(qty) ? Math.floor(qty) : 1;
+  if(qty<1) qty = 1;
   if(p.stock<=0){ showToast('Este produto está esgotado no momento.'); return; }
   const existing = state.cart.find(c=>c.id===id);
   const currentQty = existing ? existing.qty : 0;
@@ -491,7 +543,8 @@ function removeFromCart(id){
 function setQty(id, qty){
   const item = state.cart.find(c=>c.id===id);
   if(!item) return;
-  const max = stockOf(id);
+  qty = Number.isFinite(qty) ? Math.floor(qty) : item.qty;
+  const max = Math.max(1, stockOf(id));
   item.qty = Math.max(1, Math.min(qty, max));
   renderCart(); updateBadges();
 }
@@ -519,17 +572,22 @@ function renderCart(){
     const p = PRODUCTS.find(p=>p.id===c.id);
     const atMax = c.qty>=p.stock;
     return `<div class="cart-item">
-      <img src="${p.images[0]}" alt="${p.name}">
+      <img src="${p.images[0]}" alt="${p.name}" loading="lazy">
       <div class="cart-item-info">
-        <h4>${p.name}</h4>
-        <div class="muted">${euro(p.price)} / un.</div>
-        <div class="qty-stepper">
-          <button onclick="setQty(${p.id}, ${c.qty-1})" aria-label="Diminuir quantidade">–</button>
-          <span>${c.qty}</span>
-          <button onclick="setQty(${p.id}, ${c.qty+1})" aria-label="Aumentar quantidade" ${atMax?'disabled':''}>+</button>
+        <div class="cart-item-top">
+          <h4>${p.name}</h4>
+          <button class="cart-item-remove" onclick="removeFromCart(${p.id})" aria-label="Remover ${p.name} do carrinho" title="Remover"><svg><use href="#i-x"/></svg></button>
+        </div>
+        <div class="cart-item-price">${euro(p.price)} <span class="cart-item-unit">/ un.</span></div>
+        <div class="cart-item-bottom">
+          <div class="qty-stepper">
+            <button onclick="setQty(${p.id}, ${c.qty-1})" aria-label="Diminuir quantidade">–</button>
+            <span>${c.qty}</span>
+            <button onclick="setQty(${p.id}, ${c.qty+1})" aria-label="Aumentar quantidade" ${atMax?'disabled':''}>+</button>
+          </div>
+          <div class="cart-item-linetotal">${euro(p.price*c.qty)}</div>
         </div>
         ${atMax?`<div class="stock-warn">Máximo em stock (${p.stock})</div>`:''}
-        <button class="cart-item-remove" onclick="removeFromCart(${p.id})">Remover</button>
       </div>
     </div>`;
   }).join('');
@@ -553,9 +611,13 @@ function updateBadges(){
   fb.textContent = state.favorites.size;
 }
 function toggleFavorite(id){
-  if(state.favorites.has(id)) state.favorites.delete(id); else state.favorites.add(id);
+  const p = PRODUCTS.find(p=>p.id===id);
+  const nowFav = !state.favorites.has(id);
+  if(nowFav) state.favorites.add(id); else state.favorites.delete(id);
   updateBadges();
-  $$(`.fav-btn[data-id="${id}"]`).forEach(btn=>btn.classList.toggle('is-fav', state.favorites.has(id)));
+  $$(`.fav-btn[data-id="${id}"]`).forEach(btn=>btn.classList.toggle('is-fav', nowFav));
+  if(p) showToast(nowFav ? `${p.name} adicionado aos favoritos` : `${p.name} removido dos favoritos`);
+  if(shopState.favOnly && $('#shopGrid')) renderShopGrid();
 }
 
 /* =========================================================
@@ -595,7 +657,7 @@ function productCard(p, i=0){
           <svg><use href="#i-bag"/></svg>
         </button>
       </div>
-      <img src="${p.images[0]}" alt="${p.name}" onclick="location.hash='#/produto/${p.slug}'">
+      <img src="${p.images[0]}" alt="${p.name}" onclick="location.hash='#/produto/${p.slug}'" onload="this.classList.add('loaded')" onerror="this.classList.add('loaded')">
     </div>
     <div class="product-body">
       <span class="cat-label">${catName(p.category)}${p.personalizable?' · Personalizável':''}</span>
@@ -667,27 +729,35 @@ function closeStoryModal(){ $('#storyModal').classList.remove('open'); }
    Resend / Brevo / Mailchimp / SendGrid (nunca com chaves no
    frontend).
    ========================================================= */
-function getNewsletterList(){ try{ return JSON.parse(localStorage.getItem('gm_newsletter_demo')||'[]'); }catch(e){ return []; } }
+function getNewsletterList(){ return readJSON('gm_newsletter_demo', []); }
 function saveNewsletterList(list){ localStorage.setItem('gm_newsletter_demo', JSON.stringify(list)); }
 function isValidEmail(email){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
 
+/* Devolve { ok, code, msg } em vez de só true/false, para o formulário mostrar um estado
+   visual específico (erro/sucesso) e não só um toast passageiro. */
 function subscribeNewsletter(email, consent=true){
-  email = (email||'').trim().toLowerCase();
-  if(!isValidEmail(email)){ showToast('Introduza um email válido.'); return false; }
-  if(!consent){ showToast('É necessário aceitar receber comunicações para subscrever.'); return false; }
+  email = sanitizeText(email, 100).toLowerCase();
+  if(!isValidEmail(email)) return { ok:false, code:'invalid', msg:'Introduza um email válido (ex: nome@exemplo.com).' };
+  if(!consent) return { ok:false, code:'consent', msg:'É necessário aceitar receber comunicações para subscrever.' };
   const list = getNewsletterList();
-  if(list.find(s=>s.email===email)){ showToast('Este email já está subscrito — obrigado!'); return true; }
+  if(list.find(s=>s.email===email)) return { ok:true, code:'duplicate', msg:'Este email já está subscrito — obrigado!' };
   list.push({ email, consent:true, subscribedAt: new Date().toISOString(), lastVisit: new Date().toISOString(), lastReengagementEmailSent:null, unsubscribed:false });
   saveNewsletterList(list);
-  showToast('Subscrição confirmada. Bem-vindo(a) à Grão de Mostarda!');
-  return true;
+  return { ok:true, code:'success', msg:'Subscrição confirmada. Bem-vindo(a) à Grão de Mostarda!' };
 }
 function handleNewsletter(e){
   e.preventDefault();
-  const input = e.target.querySelector('input[type=email]');
-  const consentBox = e.target.querySelector('input[type=checkbox]');
-  const ok = subscribeNewsletter(input.value, consentBox ? consentBox.checked : true);
-  if(ok) e.target.reset();
+  const form = e.target;
+  const input = form.querySelector('input[type=email]');
+  const consentBox = form.querySelector('input[type=checkbox]');
+  const result = subscribeNewsletter(input.value, consentBox ? consentBox.checked : true);
+  const msgEl = form.parentElement.querySelector('.newsletter-msg') || form.querySelector('.newsletter-msg');
+  form.classList.toggle('is-error', !result.ok);
+  form.classList.toggle('is-success', result.ok);
+  input.setAttribute('aria-invalid', result.ok ? 'false' : 'true');
+  if(msgEl){ msgEl.textContent = result.msg; msgEl.classList.toggle('is-error', !result.ok); }
+  showToast(result.msg);
+  if(result.ok) form.reset();
 }
 function unsubscribeNewsletter(email){
   email = (email||'').trim().toLowerCase();
@@ -710,7 +780,7 @@ function pageNewsletterCancelar(){
     <div class="wrap" style="max-width:480px;margin:0 auto">
       <form class="form-panel" id="unsubscribeForm" style="text-align:left">
         <label>Email</label>
-        <input type="email" name="email" required placeholder="O seu email">
+        <input type="email" name="email" required placeholder="O seu email" maxlength="100" autocomplete="email">
         <button type="submit" class="btn btn-brown btn-block" style="margin-top:22px">Cancelar subscrição</button>
       </form>
     </div>
@@ -738,11 +808,11 @@ function wireUnsubscribePage(){
    enquanto a automação de email de backend não está ligada.
    ========================================================= */
 function nextOrderId(){
-  const n = 1000 + ORDERS_DEMO.length + (JSON.parse(localStorage.getItem('gm_orders_demo')||'[]').length) + 1;
+  const n = 1000 + ORDERS_DEMO.length + readJSON('gm_orders_demo', []).length + 1;
   return `GM-${n}`;
 }
 function saveOrderDemo(order){
-  const list = JSON.parse(localStorage.getItem('gm_orders_demo')||'[]');
+  const list = readJSON('gm_orders_demo', []);
   list.push(order);
   localStorage.setItem('gm_orders_demo', JSON.stringify(list));
 }
@@ -766,7 +836,7 @@ function buildOrderEmailBody(order){
     ``,
     `Observações: ${order.customer.notes || '—'}`,
     ``,
-    `(Pagamento a combinar via WhatsApp)`
+    `(Pagamento a combinar via WhatsApp — valores a confirmar pela loja antes do envio)`
   ].join('\n');
 }
 function submitOrder(customer){
@@ -802,7 +872,7 @@ function submitOrder(customer){
 function submitSpecialOrder(data){
   const id = `ENC-${1000 + Math.floor(seededRand(hashStr(data.email+data.name))*8999)}`;
   const record = { id, date:new Date().toISOString().slice(0,10), ...data };
-  const list = JSON.parse(localStorage.getItem('gm_special_orders_demo')||'[]');
+  const list = readJSON('gm_special_orders_demo', []);
   list.push(record);
   localStorage.setItem('gm_special_orders_demo', JSON.stringify(list));
   const subject = encodeURIComponent(`Encomenda especial — ${id} — ${SHOP.name}`);
@@ -979,11 +1049,13 @@ function pageHome(){
         <h2>Uma peça pronta a tornar-se especial</h2>
         <p>Junte-se à nossa lista e receba primeiro as novas coleções e peças em edição limitada.</p>
       </div>
-      <div>
-        <form class="newsletter-form" onsubmit="handleNewsletter(event)">
-          <input type="email" placeholder="O seu email" required>
-          <button type="submit">Subscrever</button>
+      <div class="newsletter-block">
+        <form class="newsletter-form" onsubmit="handleNewsletter(event)" novalidate>
+          <label for="newsletterHomeEmail" class="sr-only">O seu email</label>
+          <input type="email" id="newsletterHomeEmail" placeholder="O seu email" required maxlength="100" autocomplete="email">
+          <button type="submit" aria-label="Subscrever"><svg style="width:15px;height:15px"><use href="#i-arrow"/></svg><span>Subscrever</span></button>
         </form>
+        <span class="newsletter-msg" aria-live="polite"></span>
         <div class="consent-row">
           <input type="checkbox" id="consentHome" checked>
           <label for="consentHome">Aceito receber novidades e promoções por email. Posso cancelar a qualquer momento.</label>
@@ -1017,7 +1089,7 @@ function pageLoja(params){
       <div class="shop-toolbar">
         <div class="search-box">
           <svg><use href="#i-search"/></svg>
-          <input type="text" id="shopSearch" placeholder="Pesquisar produtos…" value="${shopState.query}">
+          <input type="text" id="shopSearch" placeholder="Pesquisar produtos…" value="${escapeHtml(shopState.query)}" maxlength="60">
         </div>
         <div class="filter-pills" id="filterPills">
           <button class="tag tag-btn ${shopState.cat==='todos'?'is-active':''}" data-cat="todos">Todos</button>
@@ -1043,13 +1115,18 @@ function renderShopGrid(){
   const grid = $('#shopGrid');
   if(list.length===0){
     grid.style.display='none';
-    if(!$('#shopEmpty')){
-      const empty = document.createElement('div');
+    let empty = $('#shopEmpty');
+    if(!empty){
+      empty = document.createElement('div');
       empty.id='shopEmpty';
       empty.className='empty-state';
-      empty.innerHTML = `<svg><use href="#i-search"/></svg><p>Não encontrámos produtos com esses filtros.<br>Experimente outra categoria ou termo de pesquisa.</p>`;
       grid.after(empty);
     }
+    empty.innerHTML = shopState.favOnly
+      ? `<svg><use href="#i-heart"/></svg><p>Ainda não tem favoritos${shopState.query||shopState.cat!=='todos'?' com estes filtros':''}.<br>Explore a loja e guarde as peças que mais gosta.</p><a href="#/loja" data-route="/loja" class="btn btn-outline btn-sm" id="shopEmptyClearFav" style="margin-top:16px">Ver todos os produtos</a>`
+      : `<svg><use href="#i-search"/></svg><p>Não encontrámos produtos com esses filtros.<br>Experimente outra categoria ou termo de pesquisa.</p>`;
+    const clearBtn = $('#shopEmptyClearFav');
+    if(clearBtn) clearBtn.addEventListener('click', (e)=>{ e.preventDefault(); shopState.favOnly=false; shopState.query=''; shopState.cat='todos'; location.hash='#/loja'; });
   } else {
     const old = $('#shopEmpty'); if(old) old.remove();
     grid.style.display='grid';
@@ -1223,25 +1300,50 @@ function pageCheckout(){
       </div>
       <div class="contact-grid">
         <div class="form-panel reveal">
-          <form id="checkoutForm">
-            <div class="form-row-2">
-              <div><label>Nome completo</label><input type="text" name="name" required placeholder="O seu nome"></div>
-              <div><label>Telemóvel</label><input type="tel" name="phone" required placeholder="+351 9XX XXX XXX"></div>
-            </div>
-            <label>Email</label>
-            <input type="email" name="email" required placeholder="O seu email">
+          <form id="checkoutForm" novalidate>
+            <p class="form-group-title">Identificação</p>
+            <label>Nome completo</label>
+            <input type="text" name="name" required placeholder="O seu nome" maxlength="80" autocomplete="name">
+            <span class="field-error" aria-live="polite" data-for="name"></span>
+
+            <p class="form-group-title">Morada de entrega</p>
             <label>Morada completa</label>
-            <input type="text" name="address" required placeholder="Rua, número, andar">
+            <input type="text" name="address" required placeholder="Rua, número, andar" maxlength="120" autocomplete="street-address">
+            <span class="field-error" aria-live="polite" data-for="address"></span>
             <div class="form-row-2">
-              <div><label>Código postal</label><input type="text" name="postal" required placeholder="0000-000"></div>
-              <div><label>Cidade</label><input type="text" name="city" required placeholder="Cidade"></div>
+              <div>
+                <label>Código postal</label>
+                <input type="text" name="postal" required placeholder="0000-000" maxlength="8" autocomplete="postal-code">
+                <span class="field-error" aria-live="polite" data-for="postal"></span>
+              </div>
+              <div>
+                <label>Cidade</label>
+                <input type="text" name="city" required placeholder="Cidade" maxlength="60" autocomplete="address-level2">
+                <span class="field-error" aria-live="polite" data-for="city"></span>
+              </div>
+            </div>
+
+            <p class="form-group-title">Contacto</p>
+            <div class="form-row-2">
+              <div>
+                <label>Telemóvel</label>
+                <input type="tel" name="phone" required placeholder="9XX XXX XXX" maxlength="20" autocomplete="tel">
+                <span class="field-error" aria-live="polite" data-for="phone"></span>
+              </div>
+              <div>
+                <label>Email</label>
+                <input type="email" name="email" required placeholder="O seu email" maxlength="100" autocomplete="email">
+                <span class="field-error" aria-live="polite" data-for="email"></span>
+              </div>
             </div>
             <label>Observações</label>
-            <textarea name="notes" rows="4" placeholder="Alguma indicação especial para a sua encomenda?"></textarea>
+            <textarea name="notes" rows="4" placeholder="Alguma indicação especial para a sua encomenda?" maxlength="400"></textarea>
+
             <div class="consent-row">
               <input type="checkbox" id="checkoutConsent" required>
               <label for="checkoutConsent">Confirmo que os dados acima estão corretos e aceito ser contactado(a) por WhatsApp/email para combinar o pagamento e envio.</label>
             </div>
+            <div class="payment-note" style="margin-top:16px"><svg><use href="#i-shield"/></svg><p>O pagamento é sempre combinado manualmente por MBWay ou transferência depois de enviar este pedido — não é feito nenhum pagamento automático aqui, e os valores são confirmados pela loja antes do envio da encomenda.</p></div>
             <button type="submit" class="btn btn-primary btn-block" style="margin-top:24px">Enviar encomenda</button>
           </form>
         </div>
@@ -1261,18 +1363,39 @@ function pageCheckout(){
   `;
 }
 
+const CHECKOUT_RULES = {
+  name:    { required:true, maxLen:80,  requiredMsg:'Indique o seu nome completo.', validate:v=>v.trim().includes(' '), msg:'Escreva o nome completo (nome e apelido).' },
+  address: { required:true, maxLen:120, requiredMsg:'Indique a morada de entrega.' },
+  postal:  { required:true, maxLen:8,   requiredMsg:'Indique o código postal.', validate:isValidPostalPT, msg:'Use o formato 0000-000.' },
+  city:    { required:true, maxLen:60,  requiredMsg:'Indique a cidade.' },
+  phone:   { required:true, maxLen:20,  requiredMsg:'Indique um telemóvel de contacto.', validate:isValidPhonePT, msg:'Introduza um número de telefone português válido (ex: 912 345 678).' },
+  email:   { required:true, maxLen:100, requiredMsg:'Indique o seu email.', validate:isValidEmail, msg:'Introduza um email válido (ex: nome@exemplo.com).' },
+  notes:   { required:false, maxLen:400 },
+};
 function wireCheckoutPage(){
   const form = $('#checkoutForm');
   if(!form) return;
+  // validação em tempo real ao sair de cada campo, para o erro aparecer antes de tentar submeter
+  Object.keys(CHECKOUT_RULES).forEach(name=>{
+    const input = form.querySelector(`[name="${name}"]`);
+    if(input) input.addEventListener('blur', ()=>{
+      const raw = sanitizeText(input.value, CHECKOUT_RULES[name].maxLen);
+      const rule = CHECKOUT_RULES[name];
+      let msg = '';
+      if(rule.required && !raw) msg = rule.requiredMsg;
+      else if(raw && rule.validate && !rule.validate(raw)) msg = rule.msg;
+      setFieldError(form, name, msg);
+    });
+  });
   form.addEventListener('submit', e=>{
     e.preventDefault();
-    const fd = new FormData(form);
-    const customer = {
-      name: fd.get('name'), phone: fd.get('phone'), email: fd.get('email'),
-      address: fd.get('address'), postal: fd.get('postal'), city: fd.get('city'),
-      notes: fd.get('notes'),
-    };
-    const { order, mailtoUrl } = submitOrder(customer);
+    if(!form.querySelector('#checkoutConsent').checked){
+      showToast('É necessário aceitar os termos de contacto para enviar a encomenda.');
+      return;
+    }
+    const { ok, values } = validateForm(form, CHECKOUT_RULES);
+    if(!ok){ showToast('Reveja os campos assinalados antes de enviar.'); return; }
+    const { order, mailtoUrl } = submitOrder(values);
     window.open(mailtoUrl, '_blank');
     location.hash = `#/confirmacao/${order.id}`;
   });
@@ -1289,7 +1412,7 @@ function pageConfirmacao(orderId){
       <div class="confirm-box reveal">
         <div class="ok-icon"><svg><use href="#i-check"/></svg></div>
         <h2>Encomenda recebida!</h2>
-        <p>Obrigado${order?`, ${order.customer.name.split(' ')[0]}`:''}! A sua encomenda foi registada. Abrimos um email para ${SHOP.email} com todos os detalhes — se não abriu automaticamente, contacte-nos diretamente.</p>
+        <p>Obrigado${order?`, ${escapeHtml(order.customer.name.split(' ')[0])}`:''}! A sua encomenda foi registada. Abrimos um email para ${SHOP.email} com todos os detalhes — se não abriu automaticamente, contacte-nos diretamente.</p>
         <div class="confirm-id">Número da encomenda: ${orderId}</div>
         <p style="margin-top:20px">O pagamento é combinado diretamente pelo WhatsApp. Clique abaixo para nos enviar uma mensagem com o número da sua encomenda.</p>
         <a class="btn btn-whatsapp" href="${SHOP.whatsappUrlPayment(orderId)}" target="_blank" rel="noopener"><svg style="width:17px;height:17px"><use href="#i-wa"/></svg>Combinar pagamento no WhatsApp</a>
@@ -1831,37 +1954,39 @@ function pageEncomendasEspeciais(){
     <div class="wrap">
       <div class="contact-grid">
         <div class="form-panel reveal">
-          <form id="specialForm">
+          <form id="specialForm" novalidate>
             <div class="form-row-2">
-              <div><label>Nome</label><input type="text" name="name" required></div>
-              <div><label>Telefone</label><input type="tel" name="phone" required></div>
+              <div><label>Nome</label><input type="text" name="name" required maxlength="80" autocomplete="name"><span class="field-error" aria-live="polite" data-for="name"></span></div>
+              <div><label>Telefone</label><input type="tel" name="phone" required maxlength="20" autocomplete="tel"><span class="field-error" aria-live="polite" data-for="phone"></span></div>
             </div>
             <label>Email</label>
-            <input type="email" name="email" required>
+            <input type="email" name="email" required maxlength="100" autocomplete="email">
+            <span class="field-error" aria-live="polite" data-for="email"></span>
             <div class="form-row-2">
               <div><label>Tipo de produto</label>
                 <select name="type" required>
                   <option value="">Escolha uma categoria</option>
-                  ${CATEGORIES.map(c=>`<option value="${c.name}">${c.name}</option>`).join('')}
+                  ${CATEGORIES.map(c=>`<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('')}
                   <option value="Outro">Outro</option>
                 </select>
               </div>
-              <div><label>Quantidade</label><input type="number" name="qty" min="1" value="1" required></div>
+              <div><label>Quantidade</label><input type="number" name="qty" min="1" max="99" value="1" required></div>
             </div>
             <label>Descrição da ideia</label>
-            <textarea name="description" rows="4" required placeholder="Descreva a peça que imagina"></textarea>
+            <textarea name="description" rows="4" required placeholder="Descreva a peça que imagina" maxlength="600"></textarea>
+            <span class="field-error" aria-live="polite" data-for="description"></span>
             <label>Frase / versículo</label>
-            <input type="text" name="verse" placeholder="Ex: Lucas 17:6">
+            <input type="text" name="verse" placeholder="Ex: Lucas 17:6" maxlength="120">
             <div class="form-row-2">
-              <div><label>Cores</label><input type="text" name="colors" placeholder="Ex: bege e dourado"></div>
-              <div><label>Dimensões</label><input type="text" name="dimensions" placeholder="Ex: 30x20cm"></div>
+              <div><label>Cores</label><input type="text" name="colors" placeholder="Ex: bege e dourado" maxlength="60"></div>
+              <div><label>Dimensões</label><input type="text" name="dimensions" placeholder="Ex: 30x20cm" maxlength="60"></div>
             </div>
             <label>Data pretendida</label>
             <input type="date" name="deadline">
             <label>Imagem de referência (opcional)</label>
             <input type="file" name="refImage" accept="image/*">
             <label>Observações</label>
-            <textarea name="notes" rows="3"></textarea>
+            <textarea name="notes" rows="3" maxlength="400"></textarea>
             <button type="submit" class="btn btn-primary btn-block" style="margin-top:24px">Enviar pedido</button>
           </form>
         </div>
@@ -1878,13 +2003,27 @@ function pageEncomendasEspeciais(){
   </section>
   `;
 }
+const SPECIAL_ORDER_RULES = {
+  name:        { required:true, maxLen:80,  requiredMsg:'Indique o seu nome.' },
+  phone:       { required:true, maxLen:20,  requiredMsg:'Indique um telefone de contacto.', validate:isValidPhonePT, msg:'Introduza um número de telefone português válido.' },
+  email:       { required:true, maxLen:100, requiredMsg:'Indique o seu email.', validate:isValidEmail, msg:'Introduza um email válido.' },
+  description: { required:true, maxLen:600, requiredMsg:'Descreva a peça que imagina.' },
+  verse:       { required:false, maxLen:120 },
+  colors:      { required:false, maxLen:60 },
+  dimensions:  { required:false, maxLen:60 },
+  notes:       { required:false, maxLen:400 },
+};
 function wireSpecialForm(){
   const form = $('#specialForm');
   if(!form) return;
   form.addEventListener('submit', e=>{
     e.preventDefault();
-    const fd = new FormData(form);
-    const data = Object.fromEntries(['name','phone','email','type','qty','description','verse','colors','dimensions','deadline','notes'].map(k=>[k, fd.get(k)||'']));
+    const { ok, values } = validateForm(form, SPECIAL_ORDER_RULES);
+    const type = form.querySelector('[name="type"]').value;
+    const qty = Math.max(1, Math.min(99, parseInt(form.querySelector('[name="qty"]').value, 10) || 1));
+    if(!type){ showToast('Escolha um tipo de produto.'); return; }
+    if(!ok){ showToast('Reveja os campos assinalados antes de enviar.'); return; }
+    const data = { ...values, type, qty, deadline: form.querySelector('[name="deadline"]').value || '' };
     const { id, mailtoUrl } = submitSpecialOrder(data);
     window.open(mailtoUrl,'_blank');
     showToast(`Pedido enviado! Referência: ${id}`);
@@ -1982,15 +2121,18 @@ function pageContacto(){
       <div class="form-panel reveal">
         <h3 style="font-size:20px;margin-bottom:6px">Envie-nos uma mensagem</h3>
         <p style="font-size:13.5px">Respondemos, em média, dentro de 1 a 2 dias úteis.</p>
-        <form id="contactForm">
+        <form id="contactForm" novalidate>
           <label>Nome</label>
-          <input type="text" name="name" required placeholder="O seu nome">
+          <input type="text" name="name" required placeholder="O seu nome" maxlength="80" autocomplete="name">
+          <span class="field-error" aria-live="polite" data-for="name"></span>
           <label>Email</label>
-          <input type="email" name="email" required placeholder="O seu email">
+          <input type="email" name="email" required placeholder="O seu email" maxlength="100" autocomplete="email">
+          <span class="field-error" aria-live="polite" data-for="email"></span>
           <label>Assunto</label>
-          <input type="text" name="subject" placeholder="Ex: Encomenda personalizada">
+          <input type="text" name="subject" placeholder="Ex: Encomenda personalizada" maxlength="100">
           <label>Mensagem</label>
-          <textarea name="message" rows="5" required placeholder="Escreva aqui a sua mensagem"></textarea>
+          <textarea name="message" rows="5" required placeholder="Escreva aqui a sua mensagem" maxlength="600"></textarea>
+          <span class="field-error" aria-live="polite" data-for="message"></span>
           <button type="submit" class="btn btn-primary" style="margin-top:22px">Enviar mensagem</button>
         </form>
       </div>
@@ -2011,14 +2153,21 @@ function pageContacto(){
   </section>
   `;
 }
+const CONTACT_RULES = {
+  name:    { required:true, maxLen:80,  requiredMsg:'Indique o seu nome.' },
+  email:   { required:true, maxLen:100, requiredMsg:'Indique o seu email.', validate:isValidEmail, msg:'Introduza um email válido.' },
+  subject: { required:false, maxLen:100 },
+  message: { required:true, maxLen:600, requiredMsg:'Escreva a sua mensagem.' },
+};
 function wireContactForm(){
   const form = $('#contactForm');
   if(!form) return;
   form.addEventListener('submit', e=>{
     e.preventDefault();
-    const fd = new FormData(form);
-    const subject = encodeURIComponent(`Contacto pelo site — ${fd.get('subject')||'Sem assunto'}`);
-    const body = encodeURIComponent(`Nome: ${fd.get('name')}\nEmail: ${fd.get('email')}\n\nMensagem:\n${fd.get('message')}`);
+    const { ok, values } = validateForm(form, CONTACT_RULES);
+    if(!ok){ showToast('Reveja os campos assinalados antes de enviar.'); return; }
+    const subject = encodeURIComponent(`Contacto pelo site — ${values.subject || 'Sem assunto'}`);
+    const body = encodeURIComponent(`Nome: ${values.name}\nEmail: ${values.email}\n\nMensagem:\n${values.message}`);
     window.open(`mailto:${SHOP.email}?subject=${subject}&body=${body}`, '_blank');
     showToast('Mensagem preparada — confirme o envio no seu email.');
     form.reset();
@@ -2029,7 +2178,7 @@ function wireContactForm(){
    PAGE: ADMIN (demonstração de leitura — ver ARCHITECTURE.md)
    ========================================================= */
 function markOrderCompleted(orderId){
-  const list = JSON.parse(localStorage.getItem('gm_orders_demo')||'[]');
+  const list = readJSON('gm_orders_demo', []);
   const idx = list.findIndex(o=>o.id===orderId);
   if(idx===-1) return;
   list[idx].status = 'concluída';
@@ -2038,7 +2187,7 @@ function markOrderCompleted(orderId){
   router();
 }
 function pageAdmin(){
-  const orders = JSON.parse(localStorage.getItem('gm_orders_demo')||'[]');
+  const orders = readJSON('gm_orders_demo', []).filter(isValidOrderShape);
   const newsletter = getNewsletterList();
   const bs = computeBestSellers(30,5);
   const topRated = computeTopRatedProducts(6);
@@ -2079,9 +2228,9 @@ function pageAdmin(){
           ${orders.length ? `<table class="admin-table" style="margin-bottom:30px">
             <thead><tr><th>Nº</th><th>Cliente</th><th>Total</th><th>Estado</th><th></th></tr></thead>
             <tbody>${orders.slice().reverse().map(o=>`<tr>
-              <td>${o.id}</td><td>${o.customer?.name||'—'}</td><td>${euro(o.total)}</td>
-              <td>${o.status}</td>
-              <td>${o.status!=='concluída' ? `<button class="btn btn-outline btn-sm" onclick="markOrderCompleted('${o.id}')">Marcar como concluída</button>` : '✓'}</td>
+              <td>${escapeHtml(o.id)}</td><td>${escapeHtml(o.customer?.name||'—')}</td><td>${euro(o.total)}</td>
+              <td>${escapeHtml(o.status)}</td>
+              <td>${o.status!=='concluída' ? `<button class="btn btn-outline btn-sm" onclick="markOrderCompleted('${escapeHtml(o.id)}')">Marcar como concluída</button>` : '✓'}</td>
             </tr>`).join('')}</tbody>
           </table>` : `<p style="font-size:13.5px;margin-bottom:30px">Ainda sem encomendas nesta sessão — finalize uma compra na loja para ver aqui.</p>`}
           <div class="arch-note" style="margin-bottom:28px">

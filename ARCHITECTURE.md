@@ -75,6 +75,47 @@ A página `/admin` incluída é uma **maquete visual** (sem autenticação, sem 
 ### 3.7 Fotografias reais dos produtos
 Todas as imagens de produto neste protótipo são **geradas localmente** (SVG com o nome do produto e a etiqueta "Imagem de demonstração") — propositadamente, para nunca mostrar uma fotografia errada ou de outro produto como se fosse real. Quando existirem fotografias reais, basta substituir o array `images` de cada produto em `PRODUCTS` (em `app.js`) pelos caminhos/URLs das fotografias reais.
 
+### 3.8 Segurança — o que já está implementado no frontend, e o que continua a exigir um backend
+
+**Implementado nesta entrega (auditoria de segurança):**
+- `escapeHtml(str)` (`app.js`) — escapa `& < > " '` antes de qualquer valor com origem em
+  input do utilizador (pesquisa, nome do cliente, etc.) ser inserido via `innerHTML`. Corrigidos
+  três pontos que refletiam texto sem escape: o campo de pesquisa da loja (`pageLoja`), o primeiro
+  nome do cliente na página de confirmação de encomenda (`pageConfirmacao`), e o nome do cliente na
+  tabela de encomendas do `/admin` (lido de `localStorage`, por isso era um XSS armazenado).
+- `sanitizeText(str, maxLen)` — remove caracteres de controlo e limita o comprimento de todo o
+  texto vindo de formulários (checkout, encomendas especiais, contacto, newsletter) antes de
+  guardar ou incluir no corpo do email `mailto:`.
+- Todos os campos de formulário têm `maxlength` e validação específica por campo (email, telefone
+  e código postal portugueses, nome completo), com mensagens de erro concretas — não genéricas —
+  mostradas junto ao campo (`validateForm`/`setFieldError`).
+- `readJSON(key, fallback)` — todas as leituras de `localStorage` (`gm_orders_demo`,
+  `gm_special_orders_demo`, `gm_newsletter_demo`) passam por esta função, com `try/catch` e
+  validação de que o resultado é um array. `isValidOrderShape()` descarta silenciosamente qualquer
+  encomenda gravada em `localStorage` cuja forma não bata certo (sem `id`, sem `items`, quantidades
+  não numéricas/negativas) — protege "Mais vendidos" e o `/admin` contra um valor editado à mão nas
+  DevTools sem quebrar o resto do carrinho/histórico.
+- `Object.freeze(PRODUCTS)` + `Object.freeze()` de cada produto e do respetivo array `images` —
+  impede reatribuir `PRODUCTS[i].price`/`stock` a partir da consola do browser em runtime.
+- O carrinho (`state.cart`) guarda apenas `{ id, qty }` — nunca um preço. `cartTotal()`,
+  `renderCart()` e `submitOrder()` recalculam sempre o preço a partir de `PRODUCTS.find(...)` no
+  momento de mostrar/enviar. Não há preço "solto" em memória, `localStorage` ou no DOM para alguém
+  adulterar.
+- Sem `eval()`, `new Function()` nem `setTimeout`/`setInterval` com uma string em nenhum ponto do
+  código (auditado manualmente).
+
+**Continua a ser uma limitação real, sem solução possível sem backend** (ver `SHOP`/checkout):
+Mesmo com tudo isto, este é um site 100% frontend — qualquer pessoa com conhecimento técnico pode
+abrir as DevTools e alterar o valor de `qty` de um item, ou o total mostrado no ecrã, antes de
+premir "Enviar encomenda", porque o pedido final é montado no próprio browser. Isto **não
+compromete a loja**: o pagamento é sempre confirmado manualmente pela loja (MBWay/transferência)
+antes do envio do produto, nunca processado automaticamente a partir do que aparece no ecrã do
+cliente — por isso o email gerado por `submitOrder()` inclui agora explicitamente a linha "valores
+a confirmar pela loja antes do envio". Uma proteção definitiva (impossível de contornar do lado do
+cliente) só existe com um backend que recebe `{ id, qty }` por item e recalcula o preço e o total
+a partir da base de dados do servidor antes de aceitar a encomenda — nunca confiando num total
+enviado pelo browser.
+
 ## 4. Onde tudo isto vive no código
 
 - `SHOP` (topo de `app.js`) — dados oficiais de contacto (WhatsApp, email, Instagram). Fonte única de verdade; qualquer alteração de contacto só precisa de ser feita aqui.
@@ -83,6 +124,9 @@ Todas as imagens de produto neste protótipo são **geradas localmente** (SVG co
 - `REVIEWS_DEMO` — avaliações de demonstração.
 - `FAQ_DATA` / `HELP_PAGES` — conteúdo fácil de editar/estender.
 - `submitOrder()` / `submitSpecialOrder()` — pontos de integração onde entraria a chamada a uma API real (`fetch('/api/orders', ...)`), assinalados com comentários `REQUER BACKEND`.
+- `escapeHtml()` / `sanitizeText()` / `readJSON()` / `validateForm()` (topo de `app.js`, junto aos
+  outros helpers) — utilitários de segurança partilhados por todas as páginas com formulários ou
+  texto de utilizador. Ver secção 3.8.
 
 ## 5. Prioridades cumpridas nesta entrega
 
