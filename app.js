@@ -468,6 +468,16 @@ const INSPIRATION_GALLERY = [
 ];
 
 /* =========================================================
+   DATA: MOSAICO LIFESTYLE (secção da home — ver pageHome)
+   Liga um "momento" do dia a dia a uma categoria real da loja.
+   ========================================================= */
+const LIFESTYLE_MOMENTS = [
+  { label:'Manhã com propósito', sub:'Cadernos devocionais', cat:'cadernos-a4', icon:'i-scroll', seed:201 },
+  { label:'Um brinde ao que importa', sub:'Canecas personalizadas', cat:'canecas', icon:'i-mug', seed:202 },
+  { label:'Fé na parede de casa', sub:'Decoração cristã', cat:'decoracao', icon:'i-home', seed:203 },
+];
+
+/* =========================================================
    DATA: AVALIAÇÕES (DEMONSTRAÇÃO — substituir por avaliações reais e moderadas)
    ========================================================= */
 const REVIEWS_DEMO = [
@@ -703,10 +713,11 @@ function reflectionCard(s, i){
 
 function starsHTML(rating){ return `<div class="stars">${'<svg><use href="#i-star"/></svg>'.repeat(Math.round(rating))}</div>`; }
 function initials(name){ return name.replace('Cliente exemplo — ','').trim().split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
-function reviewCard(t){
+function reviewCard(t, opts={}){
   return `
-  <div class="testi-card reveal">
+  <div class="testi-card ${opts.highlight?'is-top':''} reveal">
     <svg class="quote-icon"><use href="#i-quote"/></svg>
+    ${opts.highlight?`<span class="testi-top-tag">★ Avaliação em destaque</span>`:''}
     ${starsHTML(t.rating)}
     <p>"${t.text}"</p>
     <div class="testi-who">
@@ -907,36 +918,53 @@ function submitSpecialOrder(data){
    ========================================================= */
 function pageHome(){
   const featured = PRODUCTS.filter(p=>p.featured).slice(0,4);
+  const editorialPick = PRODUCTS.find(p=>p.slug==='caneca-graos-de-fe') || featured[0];
+  const featuredRest = featured.filter(p=>p.id!==editorialPick.id).slice(0,3);
   const bestSellers = computeBestSellers(30, 6);
   const reflectionPreview = REFLECTIONS.slice(0,4);
   const reviews = REVIEWS_DEMO.slice(0,4);
+  const topReview = reviews.reduce((best,r)=> r.rating>best.rating ? r : best, reviews[0]);
   return `
   <section class="hero">
     <div class="hero-glow"></div><div class="hero-glow-2"></div>
-    ${decor('twig','dec-side-l dec-lg tone-cream',101)}
     ${decor('fern','dec-side-r2 dec-md tone-cream secondary',102)}
     ${decor('daisy','dec-tr dec-sm tone-rose secondary',105)}
-    ${decor('leaf','dec-bl dec-sm tone-cream secondary',106)}
-    ${decor('seeds','dec-quarter-l dec-sm tone-cream secondary faint',104)}
     ${decor('seeds','dec-bot-r dec-sm tone-cream secondary faint',107)}
-    <div class="hero-content">
-      <img class="hero-logo reveal" src="assets/logo.webp" alt="Grão de Mostarda Personalizados">
-      <span class="eyebrow reveal reveal-1">Artesanato · Personalização · Fé</span>
-      <h1 class="reveal reveal-1">Produtos feitos com<br><span class="script-line">amor, fé e propósito</span></h1>
-      <p class="hero-verse-line reveal reveal-2">"Se tiverdes fé do tamanho de um grão de mostarda..."<span>Lucas 17:6 · Mateus 17:20</span></p>
-      <div class="hero-actions reveal reveal-3">
-        <a href="#/loja" data-route="/loja" class="btn btn-primary">Ver a Loja</a>
-        <a href="#/encomendas-especiais" data-route="/encomendas-especiais" class="btn btn-ghost">Pedir Encomenda Especial</a>
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <span class="eyebrow reveal reveal-1">Artesanato · Personalização · Fé</span>
+        <h1 class="reveal reveal-1">Produtos feitos com<br><span class="script-line">amor, fé e propósito</span></h1>
+        <p class="hero-verse-line reveal reveal-2">"Se tiverdes fé do tamanho de um grão de mostarda..."<span>Lucas 17:6 · Mateus 17:20</span></p>
+        <div class="hero-actions reveal reveal-2">
+          <a href="#/loja" data-route="/loja" class="btn btn-primary">Ver a Loja</a>
+          <a href="#/encomendas-especiais" data-route="/encomendas-especiais" class="btn btn-ghost">Pedir Encomenda Especial</a>
+        </div>
+        <div class="hero-trust-row reveal reveal-3">
+          <div class="hero-trust-item"><span class="mini-seal"><svg><use href="#i-leaf"/></svg></span><span>Feito à mão</span></div>
+          <div class="hero-trust-item"><span class="mini-seal"><svg><use href="#i-truck"/></svg></span><span>Envio nacional</span></div>
+          <div class="hero-trust-item"><span class="mini-seal"><svg><use href="#i-shield"/></svg></span><span>Pagamento seguro</span></div>
+        </div>
+      </div>
+      <!-- FOTOGRAFIA REAL: painel de marca (logótipo + selo) até existir fotografia do
+           ateliê/produto — ver ARCHITECTURE.md §3.9 para onde investir primeiro. -->
+      <div class="hero-visual reveal reveal-2">
+        ${decor('twig','dec-side-l dec-lg tone-cream',101)}
+        ${decor('leaf','dec-bl dec-sm tone-cream secondary',106)}
+        <div class="hero-visual-panel">
+          <img class="hero-logo" src="assets/logo.webp" alt="Grão de Mostarda Personalizados">
+          <div class="seal-badge seal-lg hero-seal spin-slow">${sealBadgeSVG('Feito à mão')}</div>
+          <span class="tag tag-mustard hero-float-tag">100% personalizável</span>
+        </div>
       </div>
     </div>
   </section>
 
   <div class="trust-strip">
-    <div class="wrap">
-      <div class="trust-item"><svg><use href="#i-leaf"/></svg> Feito à mão, peça a peça</div>
-      <div class="trust-item"><svg><use href="#i-gift"/></svg> Personalização incluída</div>
-      <div class="trust-item"><svg><use href="#i-wa"/></svg> Pagamento combinado por WhatsApp</div>
-      <div class="trust-item"><svg><use href="#i-shield"/></svg> Produção em pequena escala</div>
+    <div class="wrap trust-strip-grid">
+      <a href="#/sobre" data-route="/sobre" class="trust-item reveal reveal-1"><span class="mini-seal tone-brown"><svg><use href="#i-leaf"/></svg></span><div><strong>Feito à mão</strong><span>peça a peça, sem produção em série</span></div></a>
+      <a href="#/loja" data-route="/loja" class="trust-item reveal reveal-2"><span class="mini-seal tone-brown"><svg><use href="#i-gift"/></svg></span><div><strong>Personalização incluída</strong><span>nome, data ou versículo à escolha</span></div></a>
+      <a href="#/contacto" data-route="/contacto" class="trust-item reveal reveal-3 is-highlight"><span class="mini-seal tone-brown"><svg><use href="#i-wa"/></svg></span><div><strong>Pagamento combinado por WhatsApp</strong><span>MBWay ou transferência, confirmado por nós</span></div></a>
+      <a href="#/sobre" data-route="/sobre" class="trust-item reveal reveal-4"><span class="mini-seal tone-brown"><svg><use href="#i-shield"/></svg></span><div><strong>Produção em pequena escala</strong><span>sem atalhos, atenção a cada encomenda</span></div></a>
     </div>
   </div>
 
@@ -946,14 +974,22 @@ function pageHome(){
     <div class="wrap">
       <div class="section-head reveal">
         <span class="eyebrow">Categorias</span>
-        <h2>Para cada canto da casa e do dia a dia</h2>
+        <h2>Para cada canto<br>da casa e do dia a dia</h2>
       </div>
       <div class="cat-grid">
-        ${CATEGORIES.map((c,i)=>`
-          <a href="#/loja?cat=${c.slug}" data-route="/loja" class="cat-card reveal reveal-${(i%4)+1}">
+        ${CATEGORIES.map((c,i)=>{
+          const count = PRODUCTS.filter(p=>p.category===c.slug).length;
+          const isHero = i===0;
+          return `
+          <a href="#/loja?cat=${c.slug}" data-route="/loja" class="cat-card ${isHero?'cat-hero':''} reveal reveal-${(i%4)+1}">
             <svg class="cc-icon"><use href="#${c.icon}"/></svg>
-            <span>${c.name}</span>
-          </a>`).join('')}
+            ${isHero ? `<div class="seal-badge seal-sm tone-cream">${sealBadgeSVG('Destaque')}</div>` : ''}
+            <div class="cc-body">
+              <span class="cc-name">${c.name}</span>
+              <span class="cc-count">${count} ${count===1?'peça':'peças'}</span>
+            </div>
+          </a>`;
+        }).join('')}
       </div>
     </div>
   </section>
@@ -966,31 +1002,74 @@ function pageHome(){
         <span class="eyebrow">Em destaque</span>
         <h2>Peças que estão a apaixonar os nossos clientes</h2>
       </div>
-      <div class="product-grid">
-        ${featured.map((p,i)=>productCard(p,i)).join('')}
+      <div class="featured-split">
+        <a href="#/produto/${editorialPick.slug}" data-route="/produto/${editorialPick.slug}" class="featured-editorial reveal">
+          <div class="fe-media">
+            <span class="tag tag-mustard fe-tag">Peça do mês</span>
+            <img src="${editorialPick.images[0]}" alt="${editorialPick.name}" onload="this.classList.add('loaded')" onerror="this.classList.add('loaded')">
+          </div>
+          <div class="fe-body">
+            <span class="cat-label">${catName(editorialPick.category)}</span>
+            <h3>${editorialPick.name}</h3>
+            <p>${editorialPick.longDesc}</p>
+            <div class="fe-foot">
+              <span class="fe-price">${euro(editorialPick.price)}</span>
+              <span class="btn btn-outline btn-sm">Ver produto</span>
+            </div>
+          </div>
+        </a>
+        <div class="mini-product-list reveal reveal-2">
+          ${featuredRest.map(p=>`
+          <a href="#/produto/${p.slug}" data-route="/produto/${p.slug}" class="mini-product-row">
+            <img src="${p.images[0]}" alt="${p.name}">
+            <div class="mpr-info"><span class="mpr-cat">${catName(p.category)}</span><h4>${p.name}</h4></div>
+            <span class="mpr-price">${euro(p.price)}</span>
+          </a>`).join('')}
+          <a href="#/loja" data-route="/loja" class="btn btn-outline btn-block" style="margin-top:10px">Ver todos os produtos</a>
+        </div>
       </div>
     </div>
   </section>
 
-  <section class="section" style="padding-top:0">
-    ${decor('fern','dec-side-l2 dec-sm tone-brown secondary',122)}
+  <section class="promo-banner">
+    ${decor('twig','dec-tr dec-lg tone-cream secondary',122)}
+    ${decor('seeds','dec-bl dec-sm tone-cream secondary faint',123)}
+    <div class="wrap promo-grid">
+      <div class="promo-text reveal">
+        <span class="eyebrow">Feito à sua medida</span>
+        <h2>Cada peça pode contar<br>a sua própria história</h2>
+        <p>Nomes, datas, versículos ou uma frase que só faz sentido para si — a maioria das nossas peças pode ser personalizada diretamente no formulário do produto, sem custo extra.</p>
+        <ul class="seed-marker-list on-dark" style="margin-top:28px">
+          <li><svg><use href="#i-seed"/></svg> Escolha o texto, o versículo ou a data</li>
+          <li><svg><use href="#i-seed"/></svg> Resumo claro antes de finalizar a encomenda</li>
+          <li><svg><use href="#i-seed"/></svg> Ideal para batizados, crismas e aniversários</li>
+        </ul>
+        <a href="#/loja" data-route="/loja" class="btn btn-primary">Explorar personalizados</a>
+      </div>
+      <!-- FOTOGRAFIA REAL: uma fotografia de uma peça já personalizada (ex.: caneca com
+           nome gravado, capa de Bíblia com iniciais) substitui este panfleto oficial aqui
+           com muito mais impacto — ver ARCHITECTURE.md §3.9. -->
+      <div class="promo-visual reveal reveal-2">
+        <div class="promo-photo"><img src="assets/flyer-produtos.jpg" alt="Panfleto oficial Grão de Mostarda Personalizados"></div>
+        <div class="seal-badge seal-md tone-cream">${sealBadgeSVG('Personalizável')}</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    ${decor('leaf','dec-tl dec-md tone-brown secondary',124)}
     <div class="wrap">
-      <div class="split reveal">
-        <div class="split-media" style="background:linear-gradient(150deg,var(--brown) 0%,var(--brown-dark) 100%);display:flex;align-items:center;justify-content:center;padding:40px">
-          <img src="assets/flyer-produtos.jpg" alt="Panfleto oficial Grão de Mostarda Personalizados" style="height:100%;width:auto;object-fit:contain;border-radius:6px;box-shadow:0 20px 50px rgba(0,0,0,.35)">
-          <span class="tag tag-mustard float-tag">100% personalizável</span>
-        </div>
-        <div class="split-text">
-          <span class="eyebrow">Feito à sua medida</span>
-          <h2>Cada peça pode contar a sua própria história</h2>
-          <p>Nomes, datas, versículos ou uma frase que só faz sentido para si — a maioria das nossas peças pode ser personalizada diretamente no formulário do produto, sem custo extra.</p>
-          <ul class="split-list">
-            <li><svg><use href="#i-check"/></svg> Escolha o texto, o versículo ou a data</li>
-            <li><svg><use href="#i-check"/></svg> Resumo claro antes de finalizar a encomenda</li>
-            <li><svg><use href="#i-check"/></svg> Ideal para batizados, crismas e aniversários</li>
-          </ul>
-          <a href="#/loja" data-route="/loja" class="btn btn-outline">Explorar personalizados</a>
-        </div>
+      <div class="section-head reveal">
+        <span class="eyebrow">Lifestyle</span>
+        <h2>Peças que fazem parte<br>do dia a dia</h2>
+        <p>Momentos simples onde a fé, o cuidado e os pequenos gestos se encontram — não é só o produto, é onde ele entra na sua rotina.</p>
+      </div>
+      <div class="lifestyle-mosaic">
+        ${LIFESTYLE_MOMENTS.map((m,i)=>`
+        <a href="#/loja?cat=${m.cat}" data-route="/loja" class="lifestyle-tile reveal reveal-${i+1}">
+          <img src="${placeholderSVG(m.label, m.seed, m.icon)}" alt="${m.label}" loading="lazy" onload="this.classList.add('loaded')" onerror="this.classList.add('loaded')">
+          <div class="lt-cap"><strong>${m.label}</strong><span>${m.sub}</span></div>
+        </a>`).join('')}
       </div>
     </div>
   </section>
@@ -1041,6 +1120,23 @@ function pageHome(){
     </div>
   </section>
 
+  <section class="story-teaser">
+    ${decor('twig','dec-tl dec-md tone-orange secondary',125)}
+    <div class="wrap story-grid">
+      <div class="story-pull reveal">
+        <span class="script-line">"Um grão pequeno,<br>plantado com fé."</span>
+        ${seedGrowSVG()}
+      </div>
+      <div class="story-text reveal reveal-2">
+        <span class="eyebrow">A nossa história</span>
+        <h2>Porque lhe chamamos<br>Grão de Mostarda</h2>
+        <p class="story-verse">"Se tiverdes fé do tamanho de um grão de mostarda, direis a esta amoreira: desarraiga-te e planta-te no mar; e ela vos obedecerá."<span>Lucas 17:6 · Mateus 17:20</span></p>
+        <p>É esta a parábola que dá nome ao nosso ateliê — a fé de que algo pequeno, trabalhado com cuidado e paciência, pode crescer para muito mais do que parecia possível. Cada peça que sai das nossas mãos carrega esse propósito: não produzir em série, mas plantar, um detalhe de cada vez.</p>
+        <a href="#/sobre" data-route="/sobre" class="btn btn-outline">Conhecer a nossa história completa</a>
+      </div>
+    </div>
+  </section>
+
   <section class="section" style="padding-top:0">
     ${decor('daisy','dec-bl dec-sm tone-rose secondary',13)}
     ${decor('line','dec-top-r dec-lg tone-gold secondary',117)}
@@ -1051,7 +1147,7 @@ function pageHome(){
       </div>
       <p class="testimonial-note reveal" style="text-align:center">Avaliações de demonstração — serão substituídas por avaliações reais e moderadas quando a loja entrar em produção.</p>
       <div class="testi-grid">
-        ${reviews.map(t=>reviewCard(t)).join('')}
+        ${reviews.map(t=>reviewCard(t, {highlight: t.id===topReview.id})).join('')}
       </div>
       <div style="text-align:center;margin-top:32px" class="reveal"><a href="#/avaliacoes" data-route="/avaliacoes" class="btn btn-outline">Ver mais avaliações</a></div>
     </div>
@@ -1638,6 +1734,41 @@ function decor(kind, cls, seed){
 /** Separador decorativo em fluxo normal (não absoluto) — linha orgânica delicada, usada entre secções/projetos */
 function decorDivider(seed, cls){
   return `<div class="decor-divider ${cls||''}" aria-hidden="true">${decorLineSVG(seed)}</div>`;
+}
+
+/* =========================================================
+   MOTIVOS DE MARCA REUTILIZÁVEIS
+   ---------------------------------------------------------
+   Derivados da identidade oficial (selo circular do logótipo, couro
+   com borda costurada, semente/gota dourada) — usados com intenção
+   ao longo do site para reforçar a marca a cada scroll, não só no
+   cabeçalho:
+   1) sealBadgeSVG()   — selo circular ("feito à mão", "peça única"…)
+   2) stitchDivider()  — costura de couro, divisor de secção
+   3) ícone #i-seed reaproveitado como marcador de lista (.seed-marker-list)
+   ========================================================= */
+let sealSeq = 0;
+function sealBadgeSVG(text){
+  const pathId = `sealPath${sealSeq++}`;
+  const label = escapeHtml(String(text||'').toUpperCase());
+  return `<svg viewBox="0 0 120 120" class="seal-badge-svg" aria-hidden="true">
+    <defs><path id="${pathId}" d="M60,60 m-44,0 a44,44 0 1,1 88,0 a44,44 0 1,1 -88,0"/></defs>
+    <circle cx="60" cy="60" r="57" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".9"/>
+    <circle cx="60" cy="60" r="49" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="1.5 4" opacity=".6"/>
+    <text font-family="'Space Mono',monospace" font-size="9" letter-spacing="2.6" fill="currentColor">
+      <textPath href="#${pathId}" startOffset="1%">${label} • ${label} • </textPath>
+    </text>
+    <path d="M12 13c0-7 5-9 5-9s0 5-1.5 7C17 13 17 20 12 20s-5-7-3.5-9C7 9 7 4 7 4s5 2 5 9Z"
+      fill="none" stroke="currentColor" stroke-width="1.6" transform="translate(41,41) scale(1.6)"/>
+  </svg>`;
+}
+/** Selo circular de marca. size: 'sm'|'md'|'lg'. tone: classe de cor (ex.: 'tone-gold-on-dark') */
+function sealBadge(text, size='md', tone=''){
+  return `<div class="seal-badge seal-${size} ${tone}">${sealBadgeSVG(text)}</div>`;
+}
+/** Divisor "costura de couro" — duas linhas tracejadas desalinhadas, em vez de uma linha reta genérica */
+function stitchDivider(cls=''){
+  return `<div class="stitch-divider ${cls}" aria-hidden="true"></div>`;
 }
 
 function pageSobre(){

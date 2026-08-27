@@ -116,9 +116,13 @@ p{margin:0;line-height:1.65;color:var(--ink-soft);}
 }
 .eyebrow::before{content:'';width:18px;height:1px;background:var(--orange);}
 .script-line{font-family:var(--script);font-size:1.5em;color:var(--orange-dark);font-weight:600;}
-.section-head{max-width:640px;margin-bottom:44px;}
-.section-head h2{font-size:clamp(28px,4vw,42px);margin-top:10px;line-height:1.12;}
-.section-head p{margin-top:14px;font-size:16px;}
+/* Contraste de escala generoso e deliberado: títulos de secção muito maiores do que o
+   corpo de texto — um site "seguro" hesita aqui, um site de marca não. */
+.section-head{max-width:640px;margin-bottom:52px;}
+.section-head h2{font-size:clamp(34px,5.6vw,58px);margin-top:12px;line-height:1.05;letter-spacing:-.01em;}
+.section-head p{margin-top:16px;font-size:16.5px;max-width:480px;}
+.section-head.wide{max-width:820px;}
+.section-head.wide h2{font-size:clamp(36px,6.2vw,68px);}
 .section-head.center{margin-left:auto;margin-right:auto;text-align:center;}
 .section-head.center .eyebrow{justify-content:center;}
 .section-head.center .eyebrow::before{display:none;}
@@ -215,6 +219,35 @@ p{margin:0;line-height:1.65;color:var(--ink-soft);}
 .tag-btn.is-active::before{background:var(--cream);}
 .tag-btn.is-active:hover{background:var(--brown-dark);border-color:var(--brown-dark);}
 
+/* ---------- Motivos de marca reutilizáveis (selo, costura, marcador-semente) ----------
+   Derivados da identidade oficial: o selo circular do logótipo, a borda de couro
+   costurada, a semente/gota dourada. Usados ao longo do site, não só no header. */
+.seal-badge{display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--gold-light);filter:drop-shadow(0 4px 10px rgba(0,0,0,.25));}
+.seal-badge-svg{width:100%;height:100%;}
+.seal-badge.seal-sm{width:64px;height:64px;}
+.seal-badge.seal-md{width:96px;height:96px;}
+.seal-badge.seal-lg{width:140px;height:140px;}
+.seal-badge.tone-brown{color:var(--brown);filter:none;}
+.seal-badge.tone-cream{color:var(--cream);}
+.seal-badge.spin-slow{animation:sealspin 32s linear infinite;}
+@keyframes sealspin{to{transform:rotate(360deg);}}
+@media(prefers-reduced-motion:reduce){.seal-badge.spin-slow{animation:none;}}
+
+.stitch-divider{position:relative;height:16px;opacity:.55;}
+.stitch-divider::before,.stitch-divider::after{
+  content:'';position:absolute;left:0;right:0;height:1.5px;
+  background-image:repeating-linear-gradient(to right, var(--brown) 0 7px, transparent 7px 15px);
+}
+.stitch-divider::before{top:5px;}
+.stitch-divider::after{top:9.5px;background-position-x:7.5px;}
+.stitch-divider.on-dark::before,.stitch-divider.on-dark::after{background-image:repeating-linear-gradient(to right, var(--gold-light) 0 7px, transparent 7px 15px);}
+
+.seed-marker-list{display:flex;flex-direction:column;gap:var(--space-3);}
+.seed-marker-list li{display:flex;gap:10px;align-items:flex-start;font-size:14.5px;color:var(--ink);line-height:1.5;}
+.seed-marker-list svg{width:13px;height:17px;color:var(--mustard-deep);flex-shrink:0;margin-top:4px;}
+.seed-marker-list.on-dark li{color:rgba(251,242,228,.86);}
+.seed-marker-list.on-dark svg{color:var(--mustard);}
+
 /* ---------- Buttons ---------- */
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:10px;
@@ -224,12 +257,23 @@ p{margin:0;line-height:1.65;color:var(--ink-soft);}
   white-space:nowrap;
 }
 .btn:hover{transform:translateY(-2px);}
+/* Sweep de tinta: o preenchimento de hover entra da esquerda em vez de mudar de cor
+   instantaneamente — usa z-index negativo para pintar por cima do fundo mas por baixo
+   do texto, sem precisar de embrulhar o conteúdo do botão num <span>. */
+.btn-primary,.btn-outline{position:relative;overflow:hidden;z-index:0;isolation:isolate;}
+.btn-primary::after,.btn-outline::after{
+  content:'';position:absolute;inset:0;z-index:-1;transform:scaleX(0);transform-origin:left;
+  transition:transform .45s cubic-bezier(.65,0,.35,1);
+}
 .btn-primary{background:var(--orange);color:#fff;box-shadow:0 8px 20px rgba(217,119,46,.28);}
-.btn-primary:hover{background:var(--orange-dark);}
+.btn-primary::after{background:var(--brown-deep);}
+.btn-primary:hover::after{transform:scaleX(1);}
 .btn-ghost{background:transparent;color:var(--paper);border-color:rgba(255,252,246,.55);}
 .btn-ghost:hover{background:rgba(255,252,246,.14);}
 .btn-outline{background:transparent;color:var(--brown-dark);border-color:var(--brown);}
-.btn-outline:hover{background:var(--brown);color:var(--cream);}
+.btn-outline::after{background:var(--brown);}
+.btn-outline:hover{color:var(--cream);}
+.btn-outline:hover::after{transform:scaleX(1);}
 .btn-brown{background:var(--brown);color:var(--cream);}
 .btn-brown:hover{background:var(--brown-dark);}
 .btn-whatsapp{background:#25D366;color:#fff;}
@@ -345,8 +389,9 @@ main{padding-top:82px;}
 .reveal-4{transition-delay:.32s;}
 
 /* ---------- Hero ---------- */
-.hero{position:relative;min-height:88vh;display:flex;align-items:center;overflow:hidden;
+.hero{position:relative;min-height:94vh;display:flex;align-items:center;overflow:hidden;
   background:radial-gradient(circle at 18% 20%, #7a4c28 0%, var(--brown-dark) 46%, var(--brown-deep) 100%);
+  padding:150px 0 64px;
 }
 .hero::before{content:'';position:absolute;inset:0;opacity:.16;
   background-image:radial-gradient(circle, var(--mustard) 1.6px, transparent 1.6px);
@@ -355,42 +400,123 @@ main{padding-top:82px;}
 .hero-glow{position:absolute;top:-180px;right:-160px;width:560px;height:560px;border-radius:50%;background:radial-gradient(circle, rgba(232,178,43,.30), transparent 70%);}
 .hero-glow-2{position:absolute;bottom:-220px;left:-140px;width:520px;height:520px;border-radius:50%;background:radial-gradient(circle, rgba(217,119,46,.22), transparent 70%);}
 
-/* ---------- Hero — logo-first, centered composition ---------- */
-.hero-content{position:relative;z-index:2;color:var(--cream);padding:150px 32px 100px;max-width:760px;margin:0 auto;width:100%;
-  display:flex;flex-direction:column;align-items:center;text-align:center;}
+/* ---------- Hero — composição editorial assimétrica ----------
+   Texto largo à esquerda, painel de marca grande a sangrar para a direita — não mais
+   um bloco centrado. O selo gira lentamente e a etiqueta flutuante sai da grelha de
+   propósito, tal como um elemento colado à mão numa embalagem real. */
+.hero-grid{
+  position:relative;z-index:2;width:100%;max-width:var(--container);margin:0 auto;padding:0 32px;
+  display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,0.92fr);gap:clamp(28px,5vw,80px);align-items:center;
+}
 .hero-decor{position:absolute;z-index:1;pointer-events:none;color:var(--mustard);opacity:.14;}
 .hero-decor svg{width:100%;height:100%;}
 .hero-decor.hd-1{top:14%;left:6%;width:70px;height:70px;transform:rotate(-18deg);}
-.hero-decor.hd-2{bottom:16%;right:7%;width:86px;height:86px;transform:rotate(24deg);}
+.hero-decor.hd-2{bottom:10%;right:44%;width:86px;height:86px;transform:rotate(24deg);}
 .hero-decor.hd-3{top:8%;right:14%;width:34px;height:34px;}
 @media(max-width:700px){.hero-decor{display:none;}}
-.hero-logo{width:min(300px,58vw);height:auto;margin-bottom:30px;filter:drop-shadow(0 20px 44px rgba(0,0,0,.4));}
-.hero-content .eyebrow{color:var(--gold-light);justify-content:center;}
-.hero-content .eyebrow::before{display:none;}
-.hero-content h1{font-size:clamp(32px,5.2vw,54px);color:#fff;line-height:1.14;margin-top:16px;}
-.hero-content h1 .script-line{display:block;color:var(--mustard);font-size:.66em;margin-top:8px;}
-.hero-verse-line{margin-top:22px;max-width:520px;color:rgba(251,242,228,.82);font-family:var(--serif);font-style:italic;font-size:15.5px;line-height:1.6;}
+
+.hero-copy{position:relative;z-index:2;color:var(--cream);}
+.hero-copy .eyebrow{color:var(--gold-light);}
+.hero-copy .eyebrow::before{display:none;}
+.hero-copy h1{font-size:clamp(42px,6.6vw,88px);color:#fff;line-height:.97;margin-top:20px;letter-spacing:-.015em;}
+.hero-copy h1 .script-line{display:block;color:var(--mustard);font-size:.46em;margin-top:14px;letter-spacing:0;}
+.hero-verse-line{margin-top:28px;max-width:440px;color:rgba(251,242,228,.82);font-family:var(--serif);font-style:italic;font-size:16px;line-height:1.6;}
 .hero-verse-line span{display:block;margin-top:6px;font-style:normal;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold-light);}
-.hero-content .hero-actions{display:flex;gap:14px;margin-top:36px;flex-wrap:wrap;justify-content:center;}
-@media(max-width:600px){.hero{min-height:auto;} .hero-content{padding:130px 24px 64px;} .hero-logo{margin-bottom:22px;}}
+.hero-actions{display:flex;gap:14px;margin-top:40px;flex-wrap:wrap;}
+/* Selos de confiança — não uma linha de texto pequena, uma composição própria com o
+   anel do motivo "selo" (ver .mini-seal) em vez de ícones soltos. */
+.hero-trust-row{display:flex;gap:26px;margin-top:56px;flex-wrap:wrap;}
+.hero-trust-item{display:flex;align-items:center;gap:11px;}
+.mini-seal{width:44px;height:44px;border-radius:50%;border:1.5px solid rgba(246,214,128,.5);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.mini-seal svg{width:18px;height:18px;color:var(--gold-light);}
+.hero-trust-item span{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:rgba(251,242,228,.78);max-width:86px;line-height:1.35;}
 
-/* ---------- Trust strip ---------- */
-.trust-strip{background:var(--brown);color:var(--cream);padding:26px 0;}
-.trust-strip .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:18px;}
-.trust-item{display:flex;align-items:center;gap:10px;font-size:13.5px;letter-spacing:.02em;}
-.trust-item svg{width:20px;height:20px;color:var(--mustard);flex-shrink:0;}
+/* Painel visual — placeholder de marca (logótipo + selo) até existir fotografia real.
+   FOTOGRAFIA REAL: esta é a secção onde uma fotografia (ateliê, mãos a trabalhar, ou o
+   produto em uso) tem mais impacto — é a primeira coisa vista no site. Ver nota em
+   ARCHITECTURE.md §3.9. */
+.hero-visual{position:relative;z-index:2;display:flex;align-items:center;justify-content:center;min-height:340px;}
+.hero-visual-panel{
+  position:relative;width:100%;max-width:420px;aspect-ratio:4/5;border-radius:28px;
+  background:linear-gradient(155deg,#8a5a30 0%,var(--brown) 45%,var(--brown-deep) 100%);
+  display:flex;align-items:center;justify-content:center;box-shadow:0 40px 90px rgba(0,0,0,.42);
+}
+.hero-visual-panel::before{content:'';position:absolute;inset:0;border-radius:inherit;opacity:.16;
+  background-image:radial-gradient(circle, rgba(251,242,228,.5) 1px, transparent 1px);background-size:16px 16px;}
+.hero-visual-panel::after{content:'';position:absolute;inset:13px;border-radius:20px;border:1.5px dashed rgba(251,242,228,.32);}
+.hero-visual .hero-logo{width:58%;height:auto;position:relative;z-index:2;filter:drop-shadow(0 20px 44px rgba(0,0,0,.4));}
+.hero-visual .seal-badge.hero-seal{position:absolute;top:-32px;right:-24px;z-index:3;}
+.hero-visual .hero-float-tag{position:absolute;bottom:-14px;left:-14px;transform:rotate(-7deg);z-index:3;}
+@media(max-width:1080px){.hero-visual-panel{max-width:360px;}}
+@media(max-width:860px){
+  .hero-grid{grid-template-columns:minmax(0,1fr);text-align:center;}
+  .hero-copy{order:2;} .hero-visual{order:1;min-height:0;margin-bottom:12px;}
+  .hero-actions,.hero-trust-row{justify-content:center;}
+  .hero-visual-panel{max-width:270px;}
+  .hero-visual .seal-badge.hero-seal{width:84px;height:84px;top:-16px;right:-8px;}
+}
+@media(max-width:600px){.hero{min-height:auto;padding:126px 0 48px;} .hero-grid{padding:0 20px;}}
 
-/* ---------- Category grid ---------- */
-.cat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;}
-.cat-card{position:relative;border-radius:var(--radius);overflow:hidden;aspect-ratio:4/3;display:flex;align-items:flex-end;
-  background:linear-gradient(135deg, var(--brown) 0%, var(--brown-dark) 100%);}
-.cat-card .cc-icon{position:absolute;top:16px;left:16px;width:34px;height:34px;color:var(--gold-light);opacity:.85;z-index:2;}
-.cat-card::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at 80% 0%, rgba(232,178,43,.30), transparent 60%);}
-.cat-card span{position:relative;left:0;right:0;padding:16px;color:#fff;font-family:var(--serif);font-size:17px;z-index:2;line-height:1.25;}
-.cat-card:nth-child(2n){background:linear-gradient(135deg, #8a5a30 0%, var(--brown) 100%);}
-.cat-card:nth-child(3n){background:linear-gradient(135deg, var(--orange-dark) 0%, var(--brown) 100%);}
-.cat-card:hover{outline:2px solid var(--mustard);outline-offset:-2px;}
-@media(max-width:760px){.cat-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+/* ---------- Benefícios (antiga "trust strip") ----------
+   Já não é uma linha fina de 4 textos iguais: respiro generoso, ícones do próprio
+   traço da marca (ICON_PATHS), e um dos quatro com destaque visual diferente —
+   quebra deliberadamente a simetria de "4 caixas iguais". */
+.trust-strip{background:var(--paper);padding:0;position:relative;}
+.trust-strip-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-4);padding:var(--space-7) 0;}
+.trust-item{
+  display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-3);
+  padding:var(--space-5) var(--space-4);border-radius:var(--radius-lg);border:1px solid transparent;
+  transition:transform .3s ease, border-color .3s ease, background .3s ease;
+}
+.trust-item:hover{transform:translateY(-4px);border-color:var(--line);background:var(--cream);}
+.trust-item .mini-seal{width:52px;height:52px;}
+.trust-item .mini-seal.tone-brown{border-color:var(--brown);}
+.trust-item .mini-seal.tone-brown svg{color:var(--brown);}
+.trust-item strong{display:block;font-family:var(--serif);font-size:17px;color:var(--brown-dark);font-weight:600;}
+.trust-item span{display:block;margin-top:4px;font-size:12.5px;color:var(--ink-soft);line-height:1.5;}
+.trust-item.is-highlight{background:var(--sand);border-color:var(--mustard-deep);box-shadow:var(--shadow-sm);}
+.trust-item.is-highlight .mini-seal{background:var(--brown);border-color:var(--brown);}
+.trust-item.is-highlight .mini-seal svg{color:var(--gold-light);}
+.trust-item.is-highlight:hover{background:var(--sand);transform:translateY(-6px);}
+@media(max-width:980px){.trust-strip-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:520px){.trust-strip-grid{grid-template-columns:minmax(0,1fr);gap:var(--space-2);padding:var(--space-6) 0;}}
+
+/* ---------- Category grid ----------
+   Grelha assimétrica: a primeira categoria ("Bíblias") ocupa um bloco 2×2 com o selo
+   de marca, as restantes 8 preenchem a grelha à volta — nunca todas do mesmo tamanho.
+   Overlay em gradiente com legenda sobreposta, não legenda separada por baixo. */
+.cat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:clamp(120px,15vw,192px);gap:var(--space-3);}
+.cat-card{
+  position:relative;border-radius:var(--radius-lg);overflow:hidden;height:100%;
+  display:flex;flex-direction:column;justify-content:flex-end;
+  background:linear-gradient(150deg, var(--brown) 0%, var(--brown-dark) 100%);
+  transition:transform .35s cubic-bezier(.22,.7,.32,1), box-shadow .35s ease;
+}
+.cat-card::before{content:'';position:absolute;inset:0;background:linear-gradient(0deg, rgba(20,12,6,.85) 0%, rgba(20,12,6,.18) 55%, transparent 78%);}
+.cat-card::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at 84% -6%, rgba(232,178,43,.34), transparent 58%);mix-blend-mode:screen;}
+.cat-card .cc-icon{position:absolute;top:14px;left:14px;width:26px;height:26px;color:var(--gold-light);opacity:.9;z-index:2;}
+.cat-card .cc-body{position:relative;z-index:2;padding:14px;color:#fff;}
+.cat-card .cc-name{display:block;font-family:var(--serif);font-size:15.5px;line-height:1.22;}
+.cat-card .cc-count{display:block;margin-top:3px;font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:rgba(251,242,228,.65);}
+.cat-card:nth-of-type(3n){background:linear-gradient(150deg, #8a5a30 0%, var(--brown) 100%);}
+.cat-card:nth-of-type(4n){background:linear-gradient(150deg, var(--orange-dark) 0%, var(--brown) 100%);}
+.cat-card:hover{transform:translateY(-5px);box-shadow:0 20px 40px rgba(20,12,6,.35);}
+.cat-card:hover .cc-icon{color:var(--mustard);}
+
+.cat-card.cat-hero{
+  grid-column:span 2;grid-row:span 2;
+  background:linear-gradient(160deg,#8a5a30 0%,var(--brown) 45%,var(--brown-deep) 100%);
+}
+.cat-card.cat-hero .cc-icon{width:36px;height:36px;top:20px;left:20px;}
+.cat-card.cat-hero .cc-body{padding:24px;}
+.cat-card.cat-hero .cc-name{font-size:clamp(22px,2.6vw,32px);}
+.cat-card.cat-hero .cc-count{font-size:11px;margin-top:6px;}
+.cat-card.cat-hero .seal-badge{position:absolute;top:16px;right:16px;z-index:2;}
+@media(max-width:900px){
+  .cat-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:clamp(140px,32vw,220px);}
+  .cat-card.cat-hero{grid-row:span 1;}
+}
+@media(max-width:520px){.cat-grid{grid-template-columns:minmax(0,1fr);} .cat-card.cat-hero{grid-column:span 1;}}
 
 /* ---------- Product grid & card ---------- */
 .product-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:28px 24px;}
@@ -430,6 +556,34 @@ main{padding-top:82px;}
 .price{font-family:var(--serif);font-size:19px;font-weight:600;color:var(--brown-dark);}
 .mini-link{font-size:12.5px;font-weight:700;text-decoration:underline;text-underline-offset:3px;color:var(--orange-text);}
 
+/* ---------- Produtos em destaque: composição editorial ----------
+   Uma "peça do mês" grande com mais descrição, ao lado de uma lista compacta —
+   não a mesma grelha simétrica de cards do resto do site repetida aqui. */
+.featured-split{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,0.85fr);gap:var(--space-6);align-items:stretch;}
+.featured-editorial{position:relative;border-radius:var(--radius-lg);overflow:hidden;background:var(--sand);display:flex;flex-direction:column;box-shadow:var(--shadow-sm);transition:box-shadow .3s ease;}
+.featured-editorial:hover{box-shadow:var(--shadow);}
+.featured-editorial .fe-media{position:relative;aspect-ratio:5/4;overflow:hidden;}
+.featured-editorial .fe-media img{width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .5s ease, transform .7s cubic-bezier(.22,.7,.32,1);}
+.featured-editorial .fe-media img.loaded{opacity:1;}
+.featured-editorial:hover .fe-media img{transform:scale(1.045);}
+.featured-editorial .fe-tag{position:absolute;top:18px;left:18px;z-index:2;transform:rotate(-4deg);}
+.featured-editorial .fe-body{padding:var(--space-5) var(--space-5) var(--space-6);flex:1;display:flex;flex-direction:column;}
+.featured-editorial .fe-body .cat-label{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);}
+.featured-editorial h3{font-size:clamp(24px,2.8vw,34px);margin-top:8px;line-height:1.1;}
+.featured-editorial p{margin-top:14px;font-size:15px;max-width:460px;}
+.featured-editorial .fe-foot{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:auto;padding-top:26px;flex-wrap:wrap;}
+.featured-editorial .fe-price{font-family:var(--serif);font-size:28px;font-weight:600;color:var(--brown-dark);}
+
+.mini-product-list{display:flex;flex-direction:column;gap:2px;}
+.mini-product-row{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3);border-radius:var(--radius);transition:background .2s ease;}
+.mini-product-row:hover{background:var(--paper);}
+.mini-product-row img{width:64px;height:64px;object-fit:cover;border-radius:6px;background:var(--sand);flex-shrink:0;}
+.mini-product-row .mpr-info{flex:1;min-width:0;}
+.mini-product-row h4{font-size:14.5px;font-family:var(--sans);font-weight:700;color:var(--ink);line-height:1.32;}
+.mini-product-row .mpr-cat{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:2px;}
+.mini-product-row .mpr-price{font-family:var(--serif);font-size:15px;color:var(--brown-dark);flex-shrink:0;}
+@media(max-width:900px){.featured-split{grid-template-columns:minmax(0,1fr);}}
+
 /* ---------- Horizontal scroller ---------- */
 .hscroll{display:flex;gap:22px;overflow-x:auto;padding-bottom:14px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;}
 .hscroll::-webkit-scrollbar{height:5px;}
@@ -453,12 +607,52 @@ main{padding-top:82px;}
 .split.reverse .split-media{order:2;}
 @media(max-width:900px){.split.reverse .split-media{order:0;}}
 
+/* ---------- Banner promocional (cinematográfico) ----------
+   Full-bleed, tipografia grande a sangrar perto das margens, textura de couro,
+   e o selo da marca como assinatura — não a faixa previsível de antes. */
+.promo-banner{position:relative;overflow:hidden;padding:var(--space-9) 0;color:var(--cream);
+  background:linear-gradient(155deg, var(--brown-deep) 0%, var(--brown) 55%, var(--orange-dark) 150%);}
+.promo-banner::before{content:'';position:absolute;inset:0;opacity:.1;pointer-events:none;
+  background-image:radial-gradient(circle, var(--mustard) 1.5px, transparent 1.5px);background-size:30px 30px;}
+.promo-grid{position:relative;z-index:2;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,0.8fr);gap:clamp(32px,6vw,90px);align-items:center;}
+.promo-text .eyebrow{color:var(--gold-light);}
+.promo-text .eyebrow::before{background:var(--gold-light);}
+.promo-text h2{font-size:clamp(38px,6vw,72px);color:#fff;line-height:.98;margin-top:14px;letter-spacing:-.015em;}
+.promo-text p{margin-top:18px;font-size:16px;max-width:420px;color:rgba(251,242,228,.82);}
+.promo-text .btn{margin-top:32px;}
+.promo-visual{position:relative;display:flex;align-items:center;justify-content:center;min-height:260px;}
+.promo-photo{position:relative;width:100%;max-width:320px;border-radius:10px;overflow:hidden;box-shadow:0 30px 70px rgba(0,0,0,.45);transform:rotate(-3deg);border:6px solid var(--paper);}
+.promo-photo img{width:100%;height:auto;display:block;}
+.promo-visual .seal-badge{position:absolute;bottom:-26px;right:-6px;z-index:3;transform:rotate(8deg);}
+@media(max-width:900px){.promo-grid{grid-template-columns:minmax(0,1fr);text-align:center;} .promo-visual{order:-1;} .promo-text p{margin-left:auto;margin-right:auto;} .promo-text .seed-marker-list{text-align:left;max-width:340px;margin-left:auto;margin-right:auto;}}
+
+/* ---------- Secção lifestyle: mosaico editorial ----------
+   Tamanhos variados (não uma grelha regular), overlay com legenda sobre a imagem —
+   mesma lógica de composição dos cards de categoria, aplicada a um contexto diferente. */
+.lifestyle-mosaic{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:clamp(90px,10vw,130px);gap:var(--space-3);}
+.lifestyle-tile{position:relative;border-radius:var(--radius-lg);overflow:hidden;display:flex;align-items:flex-end;box-shadow:var(--shadow-sm);}
+.lifestyle-tile:nth-child(1){grid-column:1/4;grid-row:1/4;}
+.lifestyle-tile:nth-child(2){grid-column:4/7;grid-row:1/2;}
+.lifestyle-tile:nth-child(3){grid-column:4/7;grid-row:2/4;}
+.lifestyle-tile img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;
+  transition:transform .6s cubic-bezier(.22,.7,.32,1), opacity .4s ease;}
+.lifestyle-tile img.loaded{opacity:1;}
+.lifestyle-tile:hover img{transform:scale(1.06);}
+.lifestyle-tile::after{content:'';position:absolute;inset:0;background:linear-gradient(0deg, rgba(20,12,6,.78) 0%, rgba(20,12,6,.06) 50%, transparent 72%);}
+.lifestyle-tile .lt-cap{position:relative;z-index:2;padding:18px;color:#fff;}
+.lifestyle-tile .lt-cap strong{display:block;font-family:var(--serif);font-size:17px;line-height:1.25;}
+.lifestyle-tile .lt-cap span{display:block;margin-top:3px;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:rgba(251,242,228,.7);}
+@media(max-width:760px){
+  .lifestyle-mosaic{grid-template-columns:minmax(0,1fr);grid-auto-rows:220px;}
+  .lifestyle-tile:nth-child(1),.lifestyle-tile:nth-child(2),.lifestyle-tile:nth-child(3){grid-column:1/2;grid-row:auto;}
+}
+
 /* ---------- Philosophy (dark) ---------- */
 .philosophy{background:var(--brown-deep);color:var(--cream);padding:110px 0;position:relative;overflow:hidden;}
 .philosophy::before{content:'';position:absolute;top:-120px;right:-120px;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(232,178,43,.14),transparent 70%);}
 .philosophy blockquote{
-  font-family:var(--serif);font-style:italic;font-size:clamp(22px,3.2vw,34px);line-height:1.35;
-  max-width:820px;margin:0 auto;text-align:center;color:#fff;position:relative;z-index:1;
+  font-family:var(--serif);font-style:italic;font-size:clamp(24px,3.8vw,42px);line-height:1.3;
+  max-width:860px;margin:0 auto;text-align:center;color:#fff;position:relative;z-index:1;
 }
 .philosophy cite{display:block;margin-top:24px;font-style:normal;font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--mustard);text-align:center;}
 .pillars{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:30px;margin-top:80px;position:relative;z-index:1;}
@@ -467,6 +661,21 @@ main{padding-top:82px;}
 .pillar h4{color:#fff;font-size:19px;}
 .pillar p{color:rgba(251,242,228,.68);margin-top:10px;font-size:14px;}
 @media(max-width:760px){.pillars{grid-template-columns:minmax(0,1fr);gap:44px;}}
+
+/* ---------- Storytelling (teaser na home, liga a /sobre) ----------
+   Não um bloco de texto genérico: citação de destaque em Caveat, versículo em
+   evidência tipográfica, narrativa curta. Registo floral/suave — conforto e confiança. */
+.story-teaser{background:var(--sand);padding:var(--space-9) 0;position:relative;overflow:hidden;}
+.story-grid{display:grid;grid-template-columns:minmax(0,0.8fr) minmax(0,1.2fr);gap:clamp(32px,6vw,84px);align-items:center;}
+.story-pull{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:26px;}
+.story-pull .script-line{color:var(--brown-deep);font-size:clamp(28px,3.4vw,40px);line-height:1.2;}
+.story-pull .seed-grow{width:92px;height:126px;color:var(--mustard-deep);opacity:.85;}
+.story-text h2{margin-top:12px;font-size:clamp(30px,4.6vw,50px);}
+.story-verse{margin-top:26px;padding:22px 26px;background:var(--paper);border-left:3px solid var(--orange);border-radius:0 var(--radius) var(--radius) 0;font-family:var(--serif);font-style:italic;font-size:17.5px;line-height:1.6;color:var(--brown-deep);}
+.story-verse span{display:block;margin-top:12px;font-style:normal;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--orange-text);}
+.story-text p:not(.story-verse){margin-top:22px;font-size:15.5px;line-height:1.8;max-width:540px;color:var(--ink-soft);}
+.story-text .btn{margin-top:30px;}
+@media(max-width:900px){.story-grid{grid-template-columns:minmax(0,1fr);text-align:center;} .story-pull{align-items:center;} .story-text p:not(.story-verse){margin-left:auto;margin-right:auto;}}
 
 /* ---------- Bible / inspiration cards ---------- */
 .bible-card{width:250px;border-radius:var(--radius);overflow:hidden;background:var(--paper);box-shadow:var(--shadow-sm);display:flex;flex-direction:column;transition:transform .3s ease, box-shadow .3s ease;border:1px solid var(--line);}
@@ -545,11 +754,24 @@ main{padding-top:82px;}
 .testi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:22px;}
 @media(max-width:1080px){.testi-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:560px){.testi-grid{grid-template-columns:minmax(0,1fr);}}
-.testi-card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:26px 22px;position:relative;transition:transform .3s ease;}
-.testi-card:hover{transform:translateY(-5px);}
-.testi-card svg.quote-icon{width:22px;height:22px;color:var(--gold-light);}
-.testi-card p{margin-top:14px;font-size:14.5px;color:var(--ink);font-style:italic;}
-.testi-who{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:20px;}
+/* Cartão de avaliação com personalidade: aspas grandes decorativas, ligeira rotação
+   alternada entre cartões (nunca perfeitamente alinhados em grelha), e um destaque
+   visual maior para a avaliação em relevo — não 4 caixas idênticas. */
+.testi-card{
+  --tilt:0deg;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-lg);
+  padding:30px 24px 26px;position:relative;transition:transform .3s ease, box-shadow .3s ease;overflow:hidden;
+}
+.testi-grid .testi-card:nth-child(3n+1){--tilt:-1.3deg;}
+.testi-grid .testi-card:nth-child(3n+2){--tilt:1deg;}
+.testi-grid .testi-card:nth-child(3n){--tilt:-.5deg;}
+.testi-card.reveal{transform:translateY(26px) rotate(var(--tilt));}
+.testi-card.reveal.is-visible{transform:translateY(0) rotate(var(--tilt));}
+.testi-card:hover{transform:translateY(-6px) rotate(0deg);box-shadow:var(--shadow);z-index:2;}
+.testi-card svg.quote-icon{position:absolute;top:14px;right:16px;width:52px;height:52px;color:var(--sand);z-index:0;}
+.testi-card p{position:relative;z-index:1;margin-top:14px;font-size:14.5px;color:var(--ink);font-style:italic;}
+.testi-card.is-top{background:var(--sand);border-color:var(--mustard-deep);}
+.testi-top-tag{display:inline-flex;align-items:center;gap:6px;margin-bottom:10px;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--brown-dark);background:var(--mustard);padding:4px 10px;border-radius:var(--radius-pill);position:relative;z-index:1;}
+.testi-who{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:20px;position:relative;z-index:1;}
 .testi-who-l{display:flex;align-items:center;gap:10px;}
 .testi-avatar{width:38px;height:38px;border-radius:50%;background:var(--brown);color:var(--cream);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:15px;}
 .testi-who strong{display:block;font-size:13.5px;font-family:var(--sans);color:var(--ink);}
@@ -562,7 +784,7 @@ main{padding-top:82px;}
 /* ---------- Newsletter CTA ---------- */
 .cta-band{background:var(--orange);color:#fff;padding:80px 0;position:relative;overflow:hidden;}
 .cta-band .wrap{display:flex;justify-content:space-between;align-items:center;gap:40px;flex-wrap:wrap;}
-.cta-band h2{color:#fff;font-size:clamp(26px,3.4vw,36px);max-width:460px;}
+.cta-band h2{color:#fff;font-size:clamp(28px,4vw,44px);line-height:1.08;max-width:460px;}
 .cta-band p{color:rgba(255,252,246,.9);margin-top:10px;max-width:420px;}
 .newsletter-block{max-width:440px;width:100%;}
 .newsletter-form{
@@ -611,14 +833,23 @@ main{padding-top:82px;}
   color:var(--ink-soft);text-transform:none;letter-spacing:normal;font-weight:400;
 }
 
-/* ---------- Footer ---------- */
-footer{background:var(--brown-deep);color:rgba(251,242,228,.75);padding:76px 0 0;position:relative;overflow:hidden;}
+/* ---------- Footer ----------
+   Faixa do versículo + selo no topo (assinatura da marca, não só no header), coluna
+   da marca com peso visual maior e uma frase de propósito — não só logótipo + ícones. */
+footer{background:var(--brown-deep);color:rgba(251,242,228,.75);padding:0 0 0;position:relative;overflow:hidden;}
+.footer-verse-strip{background:var(--brown);border-bottom:1px solid rgba(251,242,228,.12);padding:22px 0;}
+.footer-verse-in{display:flex;align-items:center;justify-content:center;gap:18px;text-align:center;flex-wrap:wrap;}
+.footer-verse-in .seal-badge{width:46px;height:46px;color:var(--gold-light);flex-shrink:0;}
+.footer-verse-in p{font-family:var(--serif);font-style:italic;font-size:14.5px;color:rgba(251,242,228,.88);max-width:560px;}
+.footer-verse-in p span{display:block;margin-top:4px;font-style:normal;font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold-light);}
+footer > .wrap{padding-top:72px;}
 .footer-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.3fr);gap:40px;padding-bottom:56px;border-bottom:1px solid rgba(251,242,228,.14);}
 .footer-brand{display:flex;flex-direction:column;align-items:center;text-align:center;}
 .footer-brand .logo-badge{display:inline-flex;align-items:center;background:var(--cream);padding:24px 34px;border-radius:18px;box-shadow:0 16px 38px rgba(0,0,0,.28);}
 .footer-brand .logo-badge img{height:120px;width:auto;}
-.footer-social{display:flex;gap:16px;margin-top:28px;justify-content:center;}
-@media(max-width:900px){.footer-brand{align-items:flex-start;text-align:left;}.footer-social{justify-content:flex-start;}}
+.footer-tagline{margin-top:22px;font-size:13.5px;line-height:1.65;max-width:280px;color:rgba(251,242,228,.62);}
+.footer-social{display:flex;gap:16px;margin-top:26px;justify-content:center;}
+@media(max-width:900px){.footer-brand{align-items:flex-start;text-align:left;}.footer-social{justify-content:flex-start;}.footer-tagline{max-width:340px;}}
 .footer-social a{
   width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;
   transition:transform .25s cubic-bezier(.22,.7,.32,1), box-shadow .28s ease, filter .25s ease;
@@ -1092,6 +1323,23 @@ footer{background:var(--brown-deep);color:rgba(251,242,228,.75);padding:76px 0 0
 <main id="main"></main>
 
 <footer>
+  <div class="footer-verse-strip">
+    <div class="wrap footer-verse-in">
+      <span class="seal-badge" aria-hidden="true">
+        <svg viewBox="0 0 120 120" class="seal-badge-svg">
+          <defs><path id="footerSealPath" d="M60,60 m-44,0 a44,44 0 1,1 88,0 a44,44 0 1,1 -88,0"/></defs>
+          <circle cx="60" cy="60" r="57" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".9"/>
+          <circle cx="60" cy="60" r="49" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="1.5 4" opacity=".6"/>
+          <text font-family="'Space Mono',monospace" font-size="9" letter-spacing="2.6" fill="currentColor">
+            <textPath href="#footerSealPath" startOffset="1%">GRÃO DE MOSTARDA • GRÃO DE MOSTARDA • </textPath>
+          </text>
+          <path d="M12 13c0-7 5-9 5-9s0 5-1.5 7C17 13 17 20 12 20s-5-7-3.5-9C7 9 7 4 7 4s5 2 5 9Z"
+            fill="none" stroke="currentColor" stroke-width="1.6" transform="translate(41,41) scale(1.6)"/>
+        </svg>
+      </span>
+      <p>"Se tiverdes fé do tamanho de um grão de mostarda, direis a esta amoreira: desarraiga-te e planta-te no mar; e ela vos obedecerá."<span>Lucas 17:6 · Mateus 17:20</span></p>
+    </div>
+  </div>
   <div class="decor dec-tr dec-lg tone-cream" aria-hidden="true">
     <svg viewBox="0 0 60 90" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" style="transform:rotate(12deg)">
       <path d="M30 85C14 62 12 34 30 8C48 34 46 62 30 85Z" fill="currentColor" opacity=".22"/>
@@ -1110,6 +1358,7 @@ footer{background:var(--brown-deep);color:rgba(251,242,228,.75);padding:76px 0 0
     <div class="footer-grid">
       <div class="footer-brand">
         <span class="logo-badge"><img src="assets/logo.webp" alt="Grão de Mostarda Personalizados"></span>
+        <p class="footer-tagline">Ateliê de produtos personalizados com propósito — bíblias, canecas, cadernos e decoração cristã, feitos à mão, um de cada vez.</p>
         <div class="footer-social">
           <a class="fs-ig" href="https://www.instagram.com/ateliergraodemostarda?igsh=cHdpNmlrcmNja2Ix" target="_blank" rel="noopener" aria-label="Instagram"><svg><use href="#i-ig"/></svg></a>
           <a class="fs-wa" href="https://wa.me/351925130518?text=Ol%C3%A1!%20Gostaria%20de%20saber%20mais%20sobre%20os%20produtos." target="_blank" rel="noopener" aria-label="WhatsApp"><svg><use href="#i-wa"/></svg></a>
@@ -1147,7 +1396,7 @@ footer{background:var(--brown-deep);color:rgba(251,242,228,.75);padding:76px 0 0
       </div>
     </div>
     <div class="footer-bottom">
-      <span>© 2026 Grão de Mostarda Personalizados. Feito com amor, fé e propósito. <span style="opacity:.7">Lc 17.6 · Mt 17.20</span></span>
+      <span>© 2026 Grão de Mostarda Personalizados. Feito com amor, fé e propósito.</span>
       <span><a href="#/newsletter/cancelar" data-route="/newsletter/cancelar">Cancelar subscrição da newsletter</a></span>
     </div>
   </div>

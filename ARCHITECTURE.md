@@ -116,6 +116,36 @@ cliente) só existe com um backend que recebe `{ id, qty }` por item e recalcula
 a partir da base de dados do servidor antes de aceitar a encomenda — nunca confiando num total
 enviado pelo browser.
 
+### 3.9 Reformulação visual — onde a fotografia real tem mais impacto (por ordem de prioridade)
+
+A reformulação visual desta entrega trabalhou a composição, a estrutura e os motivos de marca
+(selo circular, costura de couro, semente de mostarda) precisamente para que o site já pareça
+uma marca a sério mesmo com os placeholders SVG gerados por `placeholderSVG()`/`PIMG()`. Mas o
+salto de qualidade percebida mais visível a seguir não vem de mais código — vem de fotografia
+real. Por ordem de retorno esperado (o código tem um comentário `FOTOGRAFIA REAL:` em cada um
+destes pontos):
+
+1. **Painel visual do hero** (`.hero-visual-panel` em `pageHome()`) — é a primeira coisa vista no
+   site. Uma fotografia do ateliê, das mãos a trabalhar uma peça, ou um produto em uso substitui o
+   painel de logótipo+selo com o maior impacto possível de qualquer ponto do site.
+2. **Fotografia do banner promocional** (`.promo-photo`, secção "Feito à sua medida") — hoje é o
+   panfleto oficial da marca; uma fotografia de uma peça já personalizada (ex.: caneca com nome
+   gravado, capa de Bíblia com iniciais) comunica "personalização" de forma muito mais direta do
+   que texto.
+3. **Cards de categoria** (`.cat-card`, sobretudo o card "Bíblias" em destaque) — fotografia real
+   do produto principal de cada categoria, com o mesmo overlay em gradiente já preparado no CSS.
+4. **Peça editorial em destaque** ("Produtos em destaque" → `.featured-editorial`) — uma fotografia
+   de produto bem iluminada aqui tem mais impacto do que em qualquer card da grelha normal, porque
+   ocupa mais espaço no ecrã.
+5. **Mosaico lifestyle** (`.lifestyle-tile`, secção "Lifestyle") — fotografias de contexto (o
+   produto a ser usado no dia a dia) são o tipo de imagem que este mosaico foi desenhado para
+   mostrar; é o local onde uma fotografia "de estilo de vida" (não só o produto isolado) rende mais.
+6. **Restantes fotografias de produto** (`PRODUCTS[i].images` em `app.js`) — todas as outras
+   imagens de produto, pela ordem normal do catálogo.
+
+Nada disto exige alterações de código além de trocar o URL/caminho da imagem — os componentes
+(overlay, aspect-ratio, fade-in ao carregar) já estão prontos para receber fotografia real.
+
 ## 4. Onde tudo isto vive no código
 
 - `SHOP` (topo de `app.js`) — dados oficiais de contacto (WhatsApp, email, Instagram). Fonte única de verdade; qualquer alteração de contacto só precisa de ser feita aqui.
@@ -127,6 +157,12 @@ enviado pelo browser.
 - `escapeHtml()` / `sanitizeText()` / `readJSON()` / `validateForm()` (topo de `app.js`, junto aos
   outros helpers) — utilitários de segurança partilhados por todas as páginas com formulários ou
   texto de utilizador. Ver secção 3.8.
+- `sealBadgeSVG()` / `sealBadge()` / `stitchDivider()` (`app.js`, a seguir a `decorDivider()`) —
+  os três motivos de marca reutilizáveis (selo circular, costura de couro, marcador-semente via
+  `.seed-marker-list` + ícone `#i-seed`). Ver secção 1 da tarefa de reformulação visual e o
+  comentário no topo desse bloco no código.
+- `LIFESTYLE_MOMENTS` (`app.js`, junto a `INSPIRATION_GALLERY`) — os 3 "momentos" do mosaico
+  lifestyle da home, cada um ligado a uma categoria real; fácil de estender com mais entradas.
 
 ## 5. Prioridades cumpridas nesta entrega
 
