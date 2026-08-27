@@ -711,6 +711,24 @@ function reflectionCard(s, i){
   </div>`;
 }
 
+/** Cartão da galeria "Momentos de inspiração": composição com motivo real (grãos/folhagem)
+    em vez de um ícone de linha genérico — cor de fundo e combinação de motivos variam
+    por índice para que nenhum cartão pareça copiado do vizinho. */
+function inspGalleryCard(g, i){
+  const useSeeds = i%2===0;
+  const useLeaf = i%3!==0;
+  const motifTop = 8 + Math.round(seededRand(g.seed)*14);
+  const motifRight = 8 + Math.round(seededRand(g.seed+1)*14);
+  const motifSize = 46 + Math.round(seededRand(g.seed+2)*30);
+  return `
+  <a href="#/loja" data-route="/loja" class="insp-card reveal reveal-${(i%4)+1}" title="${escapeHtml(g.label)}">
+    <div class="insp-motif" style="top:${motifTop}px;right:${motifRight}px;width:${motifSize}px;height:${motifSize}px">
+      ${useSeeds ? decorSeedClusterSVG(g.seed, 4) : ''}
+    </div>
+    ${useLeaf ? `<div class="insp-motif" style="bottom:38px;left:10px;width:${Math.round(motifSize*0.9)}px;height:${Math.round(motifSize*1.3)}px">${decorBotanicalSVG(g.seed+3)}</div>` : ''}
+    <span class="insp-cap">${escapeHtml(g.label)}</span>
+  </a>`;
+}
 function starsHTML(rating){ return `<div class="stars">${'<svg><use href="#i-star"/></svg>'.repeat(Math.round(rating))}</div>`; }
 function initials(name){ return name.replace('Cliente exemplo — ','').trim().split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
 function reviewCard(t, opts={}){
@@ -927,39 +945,33 @@ function pageHome(){
   return `
   <section class="hero">
     <div class="hero-glow"></div><div class="hero-glow-2"></div>
-    ${decor('fern','dec-side-r2 dec-md tone-cream secondary',102)}
-    ${decor('daisy','dec-tr dec-sm tone-rose secondary',105)}
+    ${decor('leaf','dec-side-l dec-lg tone-cream',101)}
+    ${decor('leaf','dec-side-r2 dec-md tone-cream secondary',102)}
+    ${decor('seeds','dec-tr dec-sm tone-gold secondary',105)}
     ${decor('seeds','dec-bot-r dec-sm tone-cream secondary faint',107)}
-    <div class="hero-grid">
-      <div class="hero-copy">
-        <span class="eyebrow reveal reveal-1">Artesanato · Personalização · Fé</span>
-        <h1 class="reveal reveal-1">Produtos feitos com<br><span class="script-line">amor, fé e propósito</span></h1>
-        <p class="hero-verse-line reveal reveal-2">"Se tiverdes fé do tamanho de um grão de mostarda..."<span>Lucas 17:6 · Mateus 17:20</span></p>
-        <div class="hero-actions reveal reveal-2">
-          <a href="#/loja" data-route="/loja" class="btn btn-primary">Ver a Loja</a>
-          <a href="#/encomendas-especiais" data-route="/encomendas-especiais" class="btn btn-ghost">Pedir Encomenda Especial</a>
-        </div>
-        <div class="hero-trust-row reveal reveal-3">
-          <div class="hero-trust-item"><span class="mini-seal"><svg><use href="#i-leaf"/></svg></span><span>Feito à mão</span></div>
-          <div class="hero-trust-item"><span class="mini-seal"><svg><use href="#i-truck"/></svg></span><span>Envio nacional</span></div>
-          <div class="hero-trust-item"><span class="mini-seal"><svg><use href="#i-shield"/></svg></span><span>Pagamento seguro</span></div>
-        </div>
+    <!-- FOTOGRAFIA REAL: o próprio logótipo (com a placa de couro e o selo já desenhados)
+         é o elemento visual do hero até existir fotografia do ateliê/produto — ver
+         ARCHITECTURE.md §3.9 para onde investir primeiro. -->
+    <div class="hero-content">
+      <img class="hero-logo reveal" src="assets/logo.webp" alt="Grão de Mostarda Personalizados">
+      <span class="eyebrow reveal reveal-1">Artesanato · Personalização · Fé</span>
+      <h1 class="reveal reveal-1">Produtos feitos com<br><span class="script-line">amor, fé e propósito</span></h1>
+      <p class="hero-verse-line reveal reveal-2">"Se tiverdes fé do tamanho de um grão de mostarda..."<span>Lucas 17:6 · Mateus 17:20</span></p>
+      <div class="hero-actions reveal reveal-2">
+        <a href="#/loja" data-route="/loja" class="btn btn-primary">Ver a Loja</a>
+        <a href="#/encomendas-especiais" data-route="/encomendas-especiais" class="btn btn-ghost">Pedir Encomenda Especial</a>
       </div>
-      <!-- FOTOGRAFIA REAL: painel de marca (logótipo + selo) até existir fotografia do
-           ateliê/produto — ver ARCHITECTURE.md §3.9 para onde investir primeiro. -->
-      <div class="hero-visual reveal reveal-2">
-        ${decor('twig','dec-side-l dec-lg tone-cream',101)}
-        ${decor('leaf','dec-bl dec-sm tone-cream secondary',106)}
-        <div class="hero-visual-panel">
-          <img class="hero-logo" src="assets/logo.webp" alt="Grão de Mostarda Personalizados">
-          <div class="seal-badge seal-lg hero-seal spin-slow">${sealBadgeSVG('Feito à mão')}</div>
-          <span class="tag tag-mustard hero-float-tag">100% personalizável</span>
-        </div>
+      <div class="hero-trust-row reveal reveal-3">
+        <div class="hero-trust-item"><span class="mini-seal"><svg><use href="#i-leaf"/></svg></span><span>Feito à mão</span></div>
+        <div class="hero-trust-item"><span class="mini-seal"><svg><use href="#i-truck"/></svg></span><span>Envio nacional</span></div>
+        <div class="hero-trust-item"><span class="mini-seal"><svg><use href="#i-shield"/></svg></span><span>Pagamento seguro</span></div>
+        <span class="tag tag-mustard">100% personalizável</span>
       </div>
     </div>
   </section>
 
   <div class="trust-strip">
+    ${stitchDivider('trust-strip-seam')}
     <div class="wrap trust-strip-grid">
       <a href="#/sobre" data-route="/sobre" class="trust-item reveal reveal-1"><span class="mini-seal tone-brown"><svg><use href="#i-leaf"/></svg></span><div><strong>Feito à mão</strong><span>peça a peça, sem produção em série</span></div></a>
       <a href="#/loja" data-route="/loja" class="trust-item reveal reveal-2"><span class="mini-seal tone-brown"><svg><use href="#i-gift"/></svg></span><div><strong>Personalização incluída</strong><span>nome, data ou versículo à escolha</span></div></a>
@@ -1067,7 +1079,8 @@ function pageHome(){
       <div class="lifestyle-mosaic">
         ${LIFESTYLE_MOMENTS.map((m,i)=>`
         <a href="#/loja?cat=${m.cat}" data-route="/loja" class="lifestyle-tile reveal reveal-${i+1}">
-          <img src="${placeholderSVG(m.label, m.seed, m.icon)}" alt="${m.label}" loading="lazy" onload="this.classList.add('loaded')" onerror="this.classList.add('loaded')">
+          <div class="lt-motif" style="top:14px;right:14px;width:${i===0?96:60}px;height:${i===0?96:60}px">${decorSeedClusterSVG(m.seed, i===0?6:4)}</div>
+          <div class="lt-motif" style="bottom:${i===0?110:70}px;left:12px;width:${i===0?70:44}px;height:${i===0?116:74}px">${decorBotanicalSVG(m.seed+3)}</div>
           <div class="lt-cap"><strong>${m.label}</strong><span>${m.sub}</span></div>
         </a>`).join('')}
       </div>
@@ -1547,193 +1560,102 @@ function seedGrowSVG(cls){
 }
 
 /* =========================================================
-   ELEMENTOS DECORATIVOS DISCRETOS
-   (inspirados nos posters oficiais da marca — ramos, flores delicadas,
-   folhas e sementes de mostarda. Sempre pointer-events:none, nunca
-   sobre texto/produtos/botões, com pequenas variações via seededRand
-   para não repetir exatamente o mesmo desenho em todas as páginas)
+   ELEMENTOS DECORATIVOS DISCRETOS — grãos de mostarda e folhagem
+   ---------------------------------------------------------
+   Ronda de correção: os motivos anteriores (linhas finas tipo rabisco,
+   pontinhos soltos) foram substituídos por dois motivos com aparência
+   realista, diretamente inspirados nos panfletos oficiais (tigela de
+   grãos dourados com sombra/gradiente, folhagem verde com nervura e
+   curvatura natural do caule) — nunca uma cor plana isolada.
+   Sempre pointer-events:none, nunca sobre texto/produtos/botões.
+   Cor intencionalmente fixa (não currentColor): grãos são sempre
+   dourados, folhas são sempre verdes — como na vida real — por isso
+   as classes tone-* deixam de tingir estes dois motivos (continuam a
+   controlar só posição/opacidade via .decor).
    ========================================================= */
-function decorSprigSVG(seed){
-  const rot = (-18 + seededRand(seed)*36).toFixed(1);
-  return `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(${rot}deg)">
-    <path d="M12 92C30 74 42 54 56 22"/>
-    <path d="M30 78C22 71 18 63 22 55" stroke-width="1.5"/>
-    <path d="M40 63C48 58 54 58 59 51" stroke-width="1.5"/>
-    <path d="M48 43C42 37 40 31 44 23" stroke-width="1.5"/>
-    <g transform="translate(56,20)">
-      <circle r="2.6" fill="currentColor" stroke="none" opacity=".95"/>
-      <path d="M0 0C4.2-3 4.2-8.6 0-11C-4.2-8.6-4.2-3 0 0Z" fill="currentColor" opacity=".8" stroke="none"/>
-      <path d="M0 0C4.2-3 4.2-8.6 0-11C-4.2-8.6-4.2-3 0 0Z" fill="currentColor" opacity=".8" stroke="none" transform="rotate(72)"/>
-      <path d="M0 0C4.2-3 4.2-8.6 0-11C-4.2-8.6-4.2-3 0 0Z" fill="currentColor" opacity=".8" stroke="none" transform="rotate(144)"/>
-      <path d="M0 0C4.2-3 4.2-8.6 0-11C-4.2-8.6-4.2-3 0 0Z" fill="currentColor" opacity=".8" stroke="none" transform="rotate(216)"/>
-      <path d="M0 0C4.2-3 4.2-8.6 0-11C-4.2-8.6-4.2-3 0 0Z" fill="currentColor" opacity=".8" stroke="none" transform="rotate(288)"/>
-    </g>
-    <g transform="translate(23,54)scale(.7)">
-      <circle r="2.2" fill="currentColor" stroke="none" opacity=".85"/>
-      <path d="M0 0C3.6-2.6 3.6-7.4 0-9.4C-3.6-7.4-3.6-2.6 0 0Z" fill="currentColor" opacity=".65" stroke="none"/>
-      <path d="M0 0C3.6-2.6 3.6-7.4 0-9.4C-3.6-7.4-3.6-2.6 0 0Z" fill="currentColor" opacity=".65" stroke="none" transform="rotate(72)"/>
-      <path d="M0 0C3.6-2.6 3.6-7.4 0-9.4C-3.6-7.4-3.6-2.6 0 0Z" fill="currentColor" opacity=".65" stroke="none" transform="rotate(144)"/>
-      <path d="M0 0C3.6-2.6 3.6-7.4 0-9.4C-3.6-7.4-3.6-2.6 0 0Z" fill="currentColor" opacity=".65" stroke="none" transform="rotate(216)"/>
-      <path d="M0 0C3.6-2.6 3.6-7.4 0-9.4C-3.6-7.4-3.6-2.6 0 0Z" fill="currentColor" opacity=".65" stroke="none" transform="rotate(288)"/>
-    </g>
-  </svg>`;
-}
-function decorFlowerSVG(seed){
-  const rot = (seededRand(seed)*360).toFixed(1);
-  return `<svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="1.4" style="transform:rotate(${rot}deg)">
-    <g transform="translate(30,30)">
-      <circle r="3.4" fill="currentColor" stroke="none" opacity=".95"/>
-      <path d="M0 0C6-5 6-14 0-18C-6-14-6-5 0 0Z" fill="currentColor" opacity=".72" stroke="none"/>
-      <path d="M0 0C6-5 6-14 0-18C-6-14-6-5 0 0Z" fill="currentColor" opacity=".72" stroke="none" transform="rotate(72)"/>
-      <path d="M0 0C6-5 6-14 0-18C-6-14-6-5 0 0Z" fill="currentColor" opacity=".72" stroke="none" transform="rotate(144)"/>
-      <path d="M0 0C6-5 6-14 0-18C-6-14-6-5 0 0Z" fill="currentColor" opacity=".72" stroke="none" transform="rotate(216)"/>
-      <path d="M0 0C6-5 6-14 0-18C-6-14-6-5 0 0Z" fill="currentColor" opacity=".72" stroke="none" transform="rotate(288)"/>
-    </g>
-  </svg>`;
-}
-function decorLeafSVG(seed){
-  const rot = (-14 + seededRand(seed)*28).toFixed(1);
-  return `<svg viewBox="0 0 60 90" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" style="transform:rotate(${rot}deg)">
-    <path d="M30 85C14 62 12 34 30 8C48 34 46 62 30 85Z" fill="currentColor" opacity=".28"/>
-    <path d="M30 85C14 62 12 34 30 8C48 34 46 62 30 85Z" opacity=".8"/>
-    <path d="M30 82V14" opacity=".65"/>
-    <path d="M30 40C24 44 20 48 18 54" opacity=".5" stroke-width="1.1"/>
-    <path d="M30 55C36 59 40 63 42 69" opacity=".5" stroke-width="1.1"/>
-  </svg>`;
-}
-/** Folha alongada tipo samambaia — várias folíolas ao longo de um talo fino, diferente da folha "gota" */
-function decorFernSVG(seed){
-  const rot = (-16 + seededRand(seed)*32).toFixed(1);
-  const n = 5;
-  let leaflets = '';
-  for(let i=0;i<n;i++){
-    const t = i/(n-1);
-    const y = (84 - t*74).toFixed(1);
-    const len = (10 + (1-t)*8).toFixed(1);
-    leaflets += `<path d="M30 ${y}C${30-len} ${y-4} ${30-len*1.4} ${y-10} ${30-len*1.6} ${y-16}" opacity=".55" stroke-width="1.1"/>`;
-    leaflets += `<path d="M30 ${y}C${30+len} ${y-4} ${30+len*1.4} ${y-10} ${30+len*1.6} ${y-16}" opacity=".55" stroke-width="1.1"/>`;
+const MUSTARD_SEED_TONES = ['#E8B22B','#C4901A','#F6D680','#D9A62A','#B4821A'];
+const LEAF_TONES = ['#7C8A52','#8F9C63','#6B7A45'];
+let seedClusterSeq = 0;
+/** Grupo de grãos de mostarda: esferas com gradiente (brilho + sombra) e sombra de contacto,
+    tamanho e tom variados, dispersão orgânica (nunca em grelha). count maior = "buquê" mais denso. */
+function decorSeedClusterSVG(seed, count=5){
+  let defs = '', seeds = '';
+  const w = 40 + count*12, h = 40 + count*7;
+  const uid = seedClusterSeq++;
+  for(let i=0;i<count;i++){
+    const cx = 8 + seededRand(seed+i*3.1)*(w-16);
+    const cy = 8 + seededRand(seed+i*5.7)*(h-16);
+    const r = 3.2 + seededRand(seed+i*7.3)*3.4;
+    const tone = MUSTARD_SEED_TONES[i % MUSTARD_SEED_TONES.length];
+    const gid = `seedg${uid}_${i}`;
+    defs += `<radialGradient id="${gid}" cx="35%" cy="30%" r="75%">
+      <stop offset="0%" stop-color="#FCEFC4"/><stop offset="48%" stop-color="${tone}"/><stop offset="100%" stop-color="#7A4C1E"/>
+    </radialGradient>`;
+    seeds += `<ellipse cx="${cx.toFixed(1)}" cy="${(cy+r*0.85).toFixed(1)}" rx="${(r*0.85).toFixed(1)}" ry="${(r*0.32).toFixed(1)}" fill="#2E1A0F" opacity=".15"/>`;
+    seeds += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="url(#${gid})"/>`;
   }
-  return `<svg viewBox="0 0 60 90" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="transform:rotate(${rot}deg)">
-    <path d="M30 88V10" opacity=".7"/>
-    ${leaflets}
-  </svg>`;
+  return `<svg viewBox="0 0 ${w} ${h}" fill="none"><defs>${defs}</defs>${seeds}</svg>`;
 }
-/** Ramo fino sem flor — apenas linha orgânica com 2-3 folhas pequenas, para zonas que pedem menos peso visual */
-function decorTwigSVG(seed){
-  const rot = (-20 + seededRand(seed)*40).toFixed(1);
-  return `<svg viewBox="0 0 100 60" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(${rot}deg)">
-    <path d="M4 50C30 40 55 30 92 8" opacity=".75"/>
-    <path d="M28 43C22 40 18 36 18 30" opacity=".5" stroke-width="1.05"/>
-    <path d="M52 32C48 26 48 20 52 15" opacity=".5" stroke-width="1.05"/>
-    <path d="M74 18C72 12 74 8 80 6" opacity=".5" stroke-width="1.05"/>
-    <circle cx="92" cy="8" r="1.8" fill="currentColor" stroke="none" opacity=".8"/>
-  </svg>`;
+/** Uma folha individual com nervura central + veios laterais, tom verde variável. */
+function leafShapeSVG(x, y, scale, rot, tone){
+  return `<g transform="translate(${x.toFixed(1)},${y.toFixed(1)}) rotate(${rot.toFixed(1)}) scale(${scale.toFixed(2)})">
+    <path d="M0,0 C-9,-7 -11,-22 0,-38 C11,-22 9,-7 0,0 Z" fill="${tone}" opacity=".88"/>
+    <path d="M0,-2 C-1,-14 -1,-26 0,-35" stroke="#3F4A26" stroke-width="1" fill="none" opacity=".55" stroke-linecap="round"/>
+    <path d="M0,-10 C-3,-12 -5,-14 -6.5,-17" stroke="#3F4A26" stroke-width=".8" fill="none" opacity=".4" stroke-linecap="round"/>
+    <path d="M0,-20 C3,-22 5,-24 6.5,-27" stroke="#3F4A26" stroke-width=".8" fill="none" opacity=".4" stroke-linecap="round"/>
+  </g>`;
 }
-/** Flor pequena tipo margarida — pétalas finas e pontiagudas, diferente da flor arredondada existente */
-function decorDaisySVG(seed){
-  const rot = (seededRand(seed)*360).toFixed(1);
-  let petals = '';
-  for(let i=0;i<8;i++){
-    petals += `<path d="M0-3C2-9 2-15 0-19C-2-15-2-9 0-3Z" fill="currentColor" opacity=".68" stroke="none" transform="rotate(${i*45})"/>`;
+/** Ramo com curvatura natural (caule em "S", não uma linha reta) e 2-3 folhas reais anexadas. */
+function decorBotanicalSVG(seed){
+  const rot = -14 + seededRand(seed)*28;
+  const leafCount = 2 + Math.floor(seededRand(seed+9)*2);
+  const anchors = [ {x:20,y:80,rot:-20}, {x:34,y:48,rot:20}, {x:20,y:22,rot:-10} ];
+  let leaves = '';
+  for(let i=0;i<leafCount;i++){
+    const a = anchors[i];
+    const tone = LEAF_TONES[Math.floor(seededRand(seed+i*4.2)*LEAF_TONES.length)];
+    const scale = 0.72 + seededRand(seed+i*6.1)*0.5;
+    leaves += leafShapeSVG(a.x, a.y, scale, a.rot + (-8+seededRand(seed+i*2.3)*16), tone);
   }
-  return `<svg viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="1" style="transform:rotate(${rot}deg)">
-    <g transform="translate(30,30)">
-      ${petals}
-      <circle r="3.2" fill="currentColor" stroke="none" opacity=".95"/>
-    </g>
+  return `<svg viewBox="0 0 60 100" fill="none" style="transform:rotate(${rot.toFixed(1)}deg)">
+    <path d="M14 96C20 74 16 52 28 32C38 16 34 8 26 2" stroke="#6B4123" stroke-width="1.8" stroke-linecap="round" fill="none" opacity=".7"/>
+    ${leaves}
   </svg>`;
 }
-/** Flor maior, ponto focal — pétalas largas e sobrepostas, para usar com moderação como destaque */
-function decorBlossomSVG(seed){
-  const rot = (seededRand(seed)*360).toFixed(1);
-  return `<svg viewBox="0 0 90 90" fill="none" stroke="currentColor" stroke-width="1.2" style="transform:rotate(${rot}deg)">
-    <g transform="translate(45,45)">
-      <circle r="5" fill="currentColor" stroke="none" opacity=".95"/>
-      <path d="M0 0C9-8 9-22 0-28C-9-22-9-8 0 0Z" fill="currentColor" opacity=".55" stroke="none"/>
-      <path d="M0 0C9-8 9-22 0-28C-9-22-9-8 0 0Z" fill="currentColor" opacity=".55" stroke="none" transform="rotate(60)"/>
-      <path d="M0 0C9-8 9-22 0-28C-9-22-9-8 0 0Z" fill="currentColor" opacity=".55" stroke="none" transform="rotate(120)"/>
-      <path d="M0 0C9-8 9-22 0-28C-9-22-9-8 0 0Z" fill="currentColor" opacity=".55" stroke="none" transform="rotate(180)"/>
-      <path d="M0 0C9-8 9-22 0-28C-9-22-9-8 0 0Z" fill="currentColor" opacity=".55" stroke="none" transform="rotate(240)"/>
-      <path d="M0 0C9-8 9-22 0-28C-9-22-9-8 0 0Z" fill="currentColor" opacity=".55" stroke="none" transform="rotate(300)"/>
-    </g>
-  </svg>`;
-}
-function decorSeedsSVG(seed){
-  const r1=seededRand(seed), r2=seededRand(seed+1), r3=seededRand(seed+2);
-  const cx1=(14+r1*6).toFixed(1), cy1=(20+r1*8).toFixed(1);
-  const cx2=(40+r2*6).toFixed(1), cy2=(12+r2*8).toFixed(1);
-  const cx3=(64+r3*6).toFixed(1), cy3=(24+r3*8).toFixed(1);
-  return `<svg viewBox="0 0 80 40" fill="currentColor">
-    <ellipse cx="${cx1}" cy="${cy1}" rx="6" ry="7.6" opacity=".78" transform="rotate(${(-20+r1*40).toFixed(1)} ${cx1} ${cy1})"/>
-    <ellipse cx="${cx2}" cy="${cy2}" rx="5.2" ry="6.6" opacity=".72" transform="rotate(${(-20+r2*40).toFixed(1)} ${cx2} ${cy2})"/>
-    <ellipse cx="${cx3}" cy="${cy3}" rx="5.6" ry="7" opacity=".78" transform="rotate(${(-20+r3*40).toFixed(1)} ${cx3} ${cy3})"/>
-  </svg>`;
-}
-function decorLineSVG(seed){
-  const rot = (-10 + seededRand(seed)*20).toFixed(1);
-  return `<svg viewBox="0 0 160 60" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" style="transform:rotate(${rot}deg)">
-    <path d="M4 44C34 10 66 54 96 22C112 6 128 14 156 4" opacity=".8"/>
-    <circle cx="96" cy="22" r="2.4" fill="currentColor" stroke="none" opacity=".85"/>
-    <circle cx="30" cy="24" r="1.8" fill="currentColor" stroke="none" opacity=".7"/>
-    <circle cx="140" cy="10" r="1.8" fill="currentColor" stroke="none" opacity=".7"/>
-  </svg>`;
-}
-function decorHeartSVG(seed){
-  const rot = (-10 + seededRand(seed)*20).toFixed(1);
-  return `<svg viewBox="0 0 40 36" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(${rot}deg)">
-    <path d="M20 32C8 24 2 16 2 9.5A7 7 0 0 1 15 5.5C16.5 7 18.5 9 20 11C21.5 9 23.5 7 25 5.5A7 7 0 0 1 38 9.5C38 16 32 24 20 32Z" fill="currentColor" opacity=".2"/>
-    <path d="M20 32C8 24 2 16 2 9.5A7 7 0 0 1 15 5.5C16.5 7 18.5 9 20 11C21.5 9 23.5 7 25 5.5A7 7 0 0 1 38 9.5C38 16 32 24 20 32Z" opacity=".8"/>
-  </svg>`;
-}
-/** Composição maior tipo "buquê" — ramo + duas flores + folhas + sementes, para cantos de destaque (ex.: hero) */
-function decorBouquetSVG(seed){
-  const rot = (-8 + seededRand(seed)*16).toFixed(1);
-  return `<svg viewBox="0 0 220 220" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(${rot}deg)">
-    <path d="M20 200C60 160 90 120 110 60" stroke-width="2.2" opacity=".8"/>
-    <path d="M50 168C38 158 30 148 32 136" stroke-width="1.5" opacity=".55"/>
-    <path d="M70 140C82 132 92 132 100 122" stroke-width="1.5" opacity=".55"/>
-    <path d="M84 108C76 100 72 92 76 80" stroke-width="1.5" opacity=".55"/>
-    <g transform="translate(110,58)">
-      <circle r="4.6" fill="currentColor" stroke="none" opacity=".95"/>
-      <path d="M0 0C7.6-5.4 7.6-15.6 0-20C-7.6-15.6-7.6-5.4 0 0Z" fill="currentColor" opacity=".8" stroke="none"/>
-      <path d="M0 0C7.6-5.4 7.6-15.6 0-20C-7.6-15.6-7.6-5.4 0 0Z" fill="currentColor" opacity=".8" stroke="none" transform="rotate(72)"/>
-      <path d="M0 0C7.6-5.4 7.6-15.6 0-20C-7.6-15.6-7.6-5.4 0 0Z" fill="currentColor" opacity=".8" stroke="none" transform="rotate(144)"/>
-      <path d="M0 0C7.6-5.4 7.6-15.6 0-20C-7.6-15.6-7.6-5.4 0 0Z" fill="currentColor" opacity=".8" stroke="none" transform="rotate(216)"/>
-      <path d="M0 0C7.6-5.4 7.6-15.6 0-20C-7.6-15.6-7.6-5.4 0 0Z" fill="currentColor" opacity=".8" stroke="none" transform="rotate(288)"/>
-    </g>
-    <g transform="translate(40,150)scale(.62)">
-      <circle r="4.6" fill="currentColor" stroke="none" opacity=".9"/>
-      <path d="M0 0C7.6-5.4 7.6-15.6 0-20C-7.6-15.6-7.6-5.4 0 0Z" fill="currentColor" opacity=".7" stroke="none"/>
-      <path d="M0 0C7.6-5.4 7.6-15.6 0-20C-7.6-15.6-7.6-5.4 0 0Z" fill="currentColor" opacity=".7" stroke="none" transform="rotate(72)"/>
-      <path d="M0 0C7.6-5.4 7.6-15.6 0-20C-7.6-15.6-7.6-5.4 0 0Z" fill="currentColor" opacity=".7" stroke="none" transform="rotate(144)"/>
-      <path d="M0 0C7.6-5.4 7.6-15.6 0-20C-7.6-15.6-7.6-5.4 0 0Z" fill="currentColor" opacity=".7" stroke="none" transform="rotate(216)"/>
-      <path d="M0 0C7.6-5.4 7.6-15.6 0-20C-7.6-15.6-7.6-5.4 0 0Z" fill="currentColor" opacity=".7" stroke="none" transform="rotate(288)"/>
-    </g>
-    <path d="M90 96C68 92 56 100 48 116C64 118 78 112 90 96Z" fill="currentColor" opacity=".28" stroke-width="1.3"/>
-    <path d="M60 176C48 168 40 168 30 176C40 184 52 184 60 176Z" fill="currentColor" opacity=".28" stroke-width="1.3"/>
-    <ellipse cx="150" cy="150" rx="5.4" ry="7" opacity=".7" fill="currentColor" stroke="none" transform="rotate(20 150 150)"/>
-    <ellipse cx="168" cy="130" rx="4.6" ry="6" opacity=".62" fill="currentColor" stroke="none" transform="rotate(-14 168 130)"/>
-    <ellipse cx="140" cy="176" rx="4.8" ry="6.2" opacity=".65" fill="currentColor" stroke="none" transform="rotate(30 140 176)"/>
-  </svg>`;
-}
-/** kind: 'sprig'|'flower'|'leaf'|'seeds'|'line'|'heart'|'bouquet'|'fern'|'twig'|'daisy'|'blossom'; cls: classes de posição/tom (ex.: 'dec-tr dec-md tone-gold') */
+/** kind: qualquer um dos antigos nomes continua a funcionar (compatibilidade dos ~59 pontos de
+    chamada) — 'seeds'/'bouquet' desenham o grupo de grãos (bouquet = mais denso), todos os
+    outros desenham o ramo com folhas reais. cls: classes de posição (ex.: 'dec-tr dec-lg'). */
 function decor(kind, cls, seed){
-  const svg = kind==='sprig' ? decorSprigSVG(seed)
-            : kind==='flower' ? decorFlowerSVG(seed)
-            : kind==='leaf' ? decorLeafSVG(seed)
-            : kind==='line' ? decorLineSVG(seed)
-            : kind==='heart' ? decorHeartSVG(seed)
-            : kind==='bouquet' ? decorBouquetSVG(seed)
-            : kind==='fern' ? decorFernSVG(seed)
-            : kind==='twig' ? decorTwigSVG(seed)
-            : kind==='daisy' ? decorDaisySVG(seed)
-            : kind==='blossom' ? decorBlossomSVG(seed)
-            : decorSeedsSVG(seed);
+  const svg = kind==='seeds' ? decorSeedClusterSVG(seed, 4)
+            : kind==='bouquet' ? decorSeedClusterSVG(seed, 7)
+            : decorBotanicalSVG(seed);
   return `<div class="decor ${cls}" aria-hidden="true">${svg}</div>`;
 }
-/** Separador decorativo em fluxo normal (não absoluto) — linha orgânica delicada, usada entre secções/projetos */
+/** Composição horizontal (grãos + uma folha) para o separador de secção — proporção larga
+    e baixa, diferente da vertical usada nos cantos. */
+function decorDividerSVG(seed){
+  const y = 25 + (seededRand(seed)-0.5)*6;
+  let defs = '', seeds = '';
+  const uid = seedClusterSeq++;
+  for(let i=0;i<4;i++){
+    const cx = 66 + seededRand(seed+i*3.3)*70;
+    const cy = 18 + seededRand(seed+i*5.1)*16;
+    const r = 3 + seededRand(seed+i*7.2)*2.6;
+    const tone = MUSTARD_SEED_TONES[i % MUSTARD_SEED_TONES.length];
+    const gid = `divg${uid}_${i}`;
+    defs += `<radialGradient id="${gid}" cx="35%" cy="30%" r="75%"><stop offset="0%" stop-color="#FCEFC4"/><stop offset="48%" stop-color="${tone}"/><stop offset="100%" stop-color="#7A4C1E"/></radialGradient>`;
+    seeds += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="url(#${gid})"/>`;
+  }
+  return `<svg viewBox="0 0 190 50" fill="none">
+    <defs>${defs}</defs>
+    <path d="M8 ${y.toFixed(1)}C18 ${(y-8).toFixed(1)} 30 ${(y+6).toFixed(1)} 40 ${y.toFixed(1)}" stroke="#6B4123" stroke-width="1.6" stroke-linecap="round" fill="none" opacity=".6"/>
+    ${leafShapeSVG(24, y-2, 0.55, -30, LEAF_TONES[Math.floor(seededRand(seed+2)*LEAF_TONES.length)])}
+    ${seeds}
+  </svg>`;
+}
+/** Separador decorativo em fluxo normal (não absoluto) — grãos + folha, usado entre secções/projetos */
 function decorDivider(seed, cls){
-  return `<div class="decor-divider ${cls||''}" aria-hidden="true">${decorLineSVG(seed)}</div>`;
+  return `<div class="decor-divider ${cls||''}" aria-hidden="true">${decorDividerSVG(seed)}</div>`;
 }
 
 /* =========================================================
@@ -1761,10 +1683,6 @@ function sealBadgeSVG(text){
     <path d="M12 13c0-7 5-9 5-9s0 5-1.5 7C17 13 17 20 12 20s-5-7-3.5-9C7 9 7 4 7 4s5 2 5 9Z"
       fill="none" stroke="currentColor" stroke-width="1.6" transform="translate(41,41) scale(1.6)"/>
   </svg>`;
-}
-/** Selo circular de marca. size: 'sm'|'md'|'lg'. tone: classe de cor (ex.: 'tone-gold-on-dark') */
-function sealBadge(text, size='md', tone=''){
-  return `<div class="seal-badge seal-${size} ${tone}">${sealBadgeSVG(text)}</div>`;
 }
 /** Divisor "costura de couro" — duas linhas tracejadas desalinhadas, em vez de uma linha reta genérica */
 function stitchDivider(cls=''){
@@ -2008,10 +1926,7 @@ function pageInspiracao(){
         <h2>Momentos de inspiração</h2>
       </div>
       <div class="insp-gallery">
-        ${INSPIRATION_GALLERY.map((g,i)=>`
-        <a href="#/loja" data-route="/loja" class="reveal reveal-${(i%4)+1}" title="${g.label}">
-          <img src="${placeholderSVG(g.label, g.seed, g.icon)}" alt="${g.label}" loading="lazy">
-        </a>`).join('')}
+        ${INSPIRATION_GALLERY.map((g,i)=>inspGalleryCard(g,i)).join('')}
       </div>
     </div>
   </section>
@@ -2021,7 +1936,7 @@ function pageInspiracao(){
     <div class="wrap" style="justify-content:center;text-align:center;flex-direction:column">
       <h2>Transforme uma destas reflexões numa peça sua</h2>
       <p style="margin:14px auto 26px">Escolha um versículo e nós ajudamo-lo a torná-lo parte de um produto personalizado.</p>
-      <a href="#/loja" data-route="/loja" class="btn" style="background:var(--brown-deep);color:#fff">Ver produtos personalizados</a>
+      <a href="#/loja" data-route="/loja" class="btn btn-primary">Ver produtos personalizados</a>
     </div>
   </section>
   `;
