@@ -972,6 +972,7 @@ function pageHome(){
 
   <div class="trust-strip">
     ${stitchDivider('trust-strip-seam')}
+    <div class="decor dec-br dec-lg faint" aria-hidden="true">${decorWoodBowlSVG(131)}</div>
     <div class="wrap trust-strip-grid">
       <a href="#/sobre" data-route="/sobre" class="trust-item reveal reveal-1"><span class="mini-seal tone-brown"><svg><use href="#i-leaf"/></svg></span><div><strong>Feito à mão</strong><span>peça a peça, sem produção em série</span></div></a>
       <a href="#/loja" data-route="/loja" class="trust-item reveal reveal-2"><span class="mini-seal tone-brown"><svg><use href="#i-gift"/></svg></span><div><strong>Personalização incluída</strong><span>nome, data ou versículo à escolha</span></div></a>
@@ -979,6 +980,43 @@ function pageHome(){
       <a href="#/sobre" data-route="/sobre" class="trust-item reveal reveal-4"><span class="mini-seal tone-brown"><svg><use href="#i-shield"/></svg></span><div><strong>Produção em pequena escala</strong><span>sem atalhos, atenção a cada encomenda</span></div></a>
     </div>
   </div>
+
+  <!-- História movida para logo a seguir aos benefícios (era mais a meio da página) —
+       é um dos conteúdos mais fortes para gerar confiança, não deve exigir tanto scroll. -->
+  <section class="story-teaser">
+    ${decor('twig','dec-tl dec-md tone-orange secondary',125)}
+    <div class="decor dec-br dec-lg faint" aria-hidden="true">${decorWoodBowlSVG(126)}</div>
+    <div class="wrap story-grid">
+      <div class="story-pull reveal">
+        <span class="script-line">"Um grão pequeno,<br>plantado com fé."</span>
+        ${seedGrowSVG()}
+      </div>
+      <div class="story-text reveal reveal-2">
+        <span class="eyebrow">A nossa história</span>
+        <h2>Porque lhe chamamos<br>Grão de Mostarda</h2>
+        <p class="story-verse">"Se tiverdes fé do tamanho de um grão de mostarda, direis a esta amoreira: desarraiga-te e planta-te no mar; e ela vos obedecerá."<span>Lucas 17:6 · Mateus 17:20</span></p>
+        <p>É esta a parábola que dá nome ao nosso ateliê — a fé de que algo pequeno, trabalhado com cuidado e paciência, pode crescer para muito mais do que parecia possível. Cada peça que sai das nossas mãos carrega esse propósito: não produzir em série, mas plantar, um detalhe de cada vez.</p>
+        <a href="#/sobre" data-route="/sobre" class="btn btn-outline">Conhecer a nossa história completa</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- "Como funciona" — explica o processo de personalização antes de a pessoa chegar
+       aos produtos, para tirar dúvidas cedo em vez de as deixar para o carrinho. -->
+  <section class="section">
+    ${decor('sprig','dec-tr dec-md tone-brown secondary faint',132)}
+    <div class="wrap">
+      <div class="section-head center reveal">
+        <span class="eyebrow">Como funciona</span>
+        <h2>Personalizar é simples</h2>
+      </div>
+      <div class="steps-row">
+        <div class="step-item reveal reveal-1"><span class="step-num">1</span><h4>Escolha o produto</h4><p>Explore a loja e escolha a peça que quer oferecer ou guardar para si.</p></div>
+        <div class="step-item reveal reveal-2"><span class="step-num">2</span><h4>Personalize</h4><p>Indique o nome, a data ou o versículo à sua escolha, diretamente na página do produto.</p></div>
+        <div class="step-item reveal reveal-3"><span class="step-num">3</span><h4>Confirmamos consigo</h4><p>Veja um resumo claro antes de enviar — o pagamento é combinado depois, por WhatsApp.</p></div>
+      </div>
+    </div>
+  </section>
 
   <section class="section">
     ${decor('twig','dec-tr dec-lg tone-gold secondary',11)}
@@ -1133,23 +1171,6 @@ function pageHome(){
     </div>
   </section>
 
-  <section class="story-teaser">
-    ${decor('twig','dec-tl dec-md tone-orange secondary',125)}
-    <div class="wrap story-grid">
-      <div class="story-pull reveal">
-        <span class="script-line">"Um grão pequeno,<br>plantado com fé."</span>
-        ${seedGrowSVG()}
-      </div>
-      <div class="story-text reveal reveal-2">
-        <span class="eyebrow">A nossa história</span>
-        <h2>Porque lhe chamamos<br>Grão de Mostarda</h2>
-        <p class="story-verse">"Se tiverdes fé do tamanho de um grão de mostarda, direis a esta amoreira: desarraiga-te e planta-te no mar; e ela vos obedecerá."<span>Lucas 17:6 · Mateus 17:20</span></p>
-        <p>É esta a parábola que dá nome ao nosso ateliê — a fé de que algo pequeno, trabalhado com cuidado e paciência, pode crescer para muito mais do que parecia possível. Cada peça que sai das nossas mãos carrega esse propósito: não produzir em série, mas plantar, um detalhe de cada vez.</p>
-        <a href="#/sobre" data-route="/sobre" class="btn btn-outline">Conhecer a nossa história completa</a>
-      </div>
-    </div>
-  </section>
-
   <section class="section" style="padding-top:0">
     ${decor('daisy','dec-bl dec-sm tone-rose secondary',13)}
     ${decor('line','dec-top-r dec-lg tone-gold secondary',117)}
@@ -1287,6 +1308,7 @@ function pageProduto(slug){
   const related = relatedProducts(p);
   return `
   <section class="section" style="padding-top:150px">
+    ${decor('twig','dec-tr dec-sm tone-gold secondary faint',p.id+140)}
     <div class="wrap">
       <p class="breadcrumb"><a href="#/loja" data-route="/loja">Loja</a> / <a href="#/loja?cat=${p.category}" data-route="/loja">${catName(p.category)}</a> / ${p.name}</p>
       <div class="pd-grid">
@@ -1414,6 +1436,7 @@ function pageCheckout(){
   }
   return `
   <section class="section" style="padding-top:150px">
+    ${decor('twig','dec-tr dec-sm tone-gold secondary faint',77)}
     <div class="wrap">
       <p class="breadcrumb"><a href="#/loja" data-route="/loja">Loja</a> / Finalizar encomenda</p>
       <div class="section-head">
@@ -1576,6 +1599,11 @@ function seedGrowSVG(cls){
 const MUSTARD_SEED_TONES = ['#E8B22B','#C4901A','#F6D680','#D9A62A','#B4821A'];
 const LEAF_TONES = ['#7C8A52','#8F9C63','#6B7A45'];
 let seedClusterSeq = 0;
+/** Definição de gradiente radial partilhada por qualquer grão desenhado no site (brilho a
+    45% + sombra escura na borda) — evita repetir o mesmo bloco de defs em cada motivo. */
+function seedGradientDef(gid, tone){
+  return `<radialGradient id="${gid}" cx="35%" cy="30%" r="75%"><stop offset="0%" stop-color="#FCEFC4"/><stop offset="48%" stop-color="${tone}"/><stop offset="100%" stop-color="#7A4C1E"/></radialGradient>`;
+}
 /** Grupo de grãos de mostarda: esferas com gradiente (brilho + sombra) e sombra de contacto,
     tamanho e tom variados, dispersão orgânica (nunca em grelha). count maior = "buquê" mais denso. */
 function decorSeedClusterSVG(seed, count=5){
@@ -1588,15 +1616,13 @@ function decorSeedClusterSVG(seed, count=5){
     const r = 3.2 + seededRand(seed+i*7.3)*3.4;
     const tone = MUSTARD_SEED_TONES[i % MUSTARD_SEED_TONES.length];
     const gid = `seedg${uid}_${i}`;
-    defs += `<radialGradient id="${gid}" cx="35%" cy="30%" r="75%">
-      <stop offset="0%" stop-color="#FCEFC4"/><stop offset="48%" stop-color="${tone}"/><stop offset="100%" stop-color="#7A4C1E"/>
-    </radialGradient>`;
+    defs += seedGradientDef(gid, tone);
     seeds += `<ellipse cx="${cx.toFixed(1)}" cy="${(cy+r*0.85).toFixed(1)}" rx="${(r*0.85).toFixed(1)}" ry="${(r*0.32).toFixed(1)}" fill="#2E1A0F" opacity=".15"/>`;
     seeds += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="url(#${gid})"/>`;
   }
   return `<svg viewBox="0 0 ${w} ${h}" fill="none"><defs>${defs}</defs>${seeds}</svg>`;
 }
-/** Uma folha individual com nervura central + veios laterais, tom verde variável. */
+/** Uma folha individual (silhueta alongada e pontiaguda) com nervura central + veios laterais. */
 function leafShapeSVG(x, y, scale, rot, tone){
   return `<g transform="translate(${x.toFixed(1)},${y.toFixed(1)}) rotate(${rot.toFixed(1)}) scale(${scale.toFixed(2)})">
     <path d="M0,0 C-9,-7 -11,-22 0,-38 C11,-22 9,-7 0,0 Z" fill="${tone}" opacity=".88"/>
@@ -1605,7 +1631,27 @@ function leafShapeSVG(x, y, scale, rot, tone){
     <path d="M0,-20 C3,-22 5,-24 6.5,-27" stroke="#3F4A26" stroke-width=".8" fill="none" opacity=".4" stroke-linecap="round"/>
   </g>`;
 }
-/** Ramo com curvatura natural (caule em "S", não uma linha reta) e 2-3 folhas reais anexadas. */
+/** Segunda espécie: folha larga e arredondada (silhueta bem diferente da alongada acima),
+    para o olhar não ver sempre a mesma planta. */
+function leafRoundShapeSVG(x, y, scale, rot, tone){
+  return `<g transform="translate(${x.toFixed(1)},${y.toFixed(1)}) rotate(${rot.toFixed(1)}) scale(${scale.toFixed(2)})">
+    <path d="M0,0 C-14,-4 -19,-15 -11,-25 C-3,-33 9,-31 13,-19 C17,-9 10,-2 0,0 Z" fill="${tone}" opacity=".86"/>
+    <path d="M0,-1 C-5,-8 -8,-15 -4,-23" stroke="#3F4A26" stroke-width=".9" fill="none" opacity=".5" stroke-linecap="round"/>
+    <path d="M-2,-8 C-5,-9 -7,-10 -8,-12" stroke="#3F4A26" stroke-width=".6" fill="none" opacity=".35" stroke-linecap="round"/>
+  </g>`;
+}
+/** Pequena flor de mostardeira: 4 pétalas amarelas + centro escuro — a planta tem flores
+    pequenas antes das vagens, reforça a ligação ao nome da marca. */
+function mustardFlowerSVG(x, y, scale, rot){
+  return `<g transform="translate(${x.toFixed(1)},${y.toFixed(1)}) rotate(${rot.toFixed(1)}) scale(${scale.toFixed(2)})">
+    <ellipse cx="0" cy="-4" rx="2.6" ry="4" fill="#F6D680" opacity=".92"/>
+    <ellipse cx="0" cy="4" rx="2.6" ry="4" fill="#F6D680" opacity=".92"/>
+    <ellipse cx="-4" cy="0" rx="4" ry="2.6" fill="#E8B22B" opacity=".92"/>
+    <ellipse cx="4" cy="0" rx="4" ry="2.6" fill="#E8B22B" opacity=".92"/>
+    <circle cx="0" cy="0" r="1.5" fill="#7A4C1E"/>
+  </g>`;
+}
+/** Ramo médio com curvatura natural (caule em "S") e 2-3 folhas reais anexadas. */
 function decorBotanicalSVG(seed){
   const rot = -14 + seededRand(seed)*28;
   const leafCount = 2 + Math.floor(seededRand(seed+9)*2);
@@ -1622,13 +1668,129 @@ function decorBotanicalSVG(seed){
     ${leaves}
   </svg>`;
 }
+/** Ramo "cheio": mais folhas, curvatura mais pronunciada (dois vincos em S) — para cantos de
+    secções grandes (hero, história), onde o ramo médio ficaria pequeno demais. */
+function decorBranchFullSVG(seed){
+  const rot = -12 + seededRand(seed)*24;
+  const anchors = [ {x:18,y:118,rot:-24}, {x:38,y:92,rot:18}, {x:14,y:64,rot:-16}, {x:36,y:36,rot:22}, {x:18,y:12,rot:-10} ];
+  let leaves = '';
+  anchors.forEach((a,i)=>{
+    const tone = LEAF_TONES[Math.floor(seededRand(seed+i*4.4)*LEAF_TONES.length)];
+    const scale = 0.8 + seededRand(seed+i*6.6)*0.55;
+    leaves += leafShapeSVG(a.x, a.y, scale, a.rot + (-8+seededRand(seed+i*2.9)*16), tone);
+  });
+  return `<svg viewBox="0 0 80 140" fill="none" style="transform:rotate(${rot.toFixed(1)}deg)">
+    <path d="M20 134C8 112 28 96 14 72C2 48 26 34 16 10" stroke="#6B4123" stroke-width="2" stroke-linecap="round" fill="none" opacity=".72"/>
+    ${leaves}
+  </svg>`;
+}
+/** Raminho pequeno e discreto, 1-2 folhas — para usar perto de texto sem distrair
+    (cartões de produto, checkout/carrinho, citações). */
+function decorTwigMiniSVG(seed){
+  const rot = -16 + seededRand(seed)*32;
+  const leafCount = 1 + Math.floor(seededRand(seed+9)*2);
+  const anchors = [ {x:14,y:50,rot:-20}, {x:26,y:22,rot:18} ];
+  let leaves = '';
+  for(let i=0;i<leafCount;i++){
+    const a = anchors[i];
+    const tone = LEAF_TONES[Math.floor(seededRand(seed+i*3.7)*LEAF_TONES.length)];
+    leaves += leafShapeSVG(a.x, a.y, 0.48+seededRand(seed+i*5.1)*0.22, a.rot, tone);
+  }
+  return `<svg viewBox="0 0 46 70" fill="none" style="transform:rotate(${rot.toFixed(1)}deg)">
+    <path d="M10 66C15 50 8 36 20 14" stroke="#6B4123" stroke-width="1.3" stroke-linecap="round" fill="none" opacity=".6"/>
+    ${leaves}
+  </svg>`;
+}
+/** Cluster de folhas largas soltas (sem caule visível) — segunda "espécie" de planta. */
+function decorLeafPairSVG(seed){
+  const rot = seededRand(seed)*30-15;
+  const anchors = [ {x:16,y:16,rot:-20}, {x:36,y:28,rot:35}, {x:22,y:38,rot:-60} ];
+  const n = 2 + Math.floor(seededRand(seed+9)*2);
+  let leaves = '';
+  for(let i=0;i<n;i++){
+    const a = anchors[i];
+    const tone = LEAF_TONES[Math.floor(seededRand(seed+i*4.1)*LEAF_TONES.length)];
+    leaves += leafRoundShapeSVG(a.x, a.y, 0.68+seededRand(seed+i*6.3)*0.4, a.rot, tone);
+  }
+  return `<svg viewBox="0 0 52 52" fill="none" style="transform:rotate(${rot.toFixed(1)}deg)">${leaves}</svg>`;
+}
+/** Ramo de flores de mostardeira — pequenas flores amarelas ao longo de um caule fino. */
+function decorMustardFlowerSVG(seed){
+  const rot = -14 + seededRand(seed)*28;
+  const anchors = [ {x:14,y:80,s:.92}, {x:26,y:56,s:1.05}, {x:12,y:34,s:.85}, {x:24,y:12,s:1} ];
+  const n = 3 + Math.floor(seededRand(seed+9)*2);
+  let flowers = '';
+  for(let i=0;i<n;i++){
+    const a = anchors[i];
+    flowers += mustardFlowerSVG(a.x, a.y, a.s*(0.85+seededRand(seed+i*3.3)*0.3), seededRand(seed+i*5.5)*360);
+  }
+  return `<svg viewBox="0 0 40 92" fill="none" style="transform:rotate(${rot.toFixed(1)}deg)">
+    <path d="M12 88C17 70 9 50 18 8" stroke="#6B4123" stroke-width="1.5" stroke-linecap="round" fill="none" opacity=".62"/>
+    ${flowers}
+  </svg>`;
+}
+/** Grãos "derramados" em trilha horizontal — diferente da nuvem/cluster, para usar como
+    separador ou faixa fina. */
+function decorSeedTrailSVG(seed, count=6){
+  let defs = '', seeds = '';
+  const w = 20 + count*22;
+  const uid = seedClusterSeq++;
+  for(let i=0;i<count;i++){
+    const t = count>1 ? i/(count-1) : 0;
+    const cx = 10 + t*(w-20) + (seededRand(seed+i*3.1)-0.5)*10;
+    const cy = 14 + Math.sin(t*Math.PI)*6 + (seededRand(seed+i*5.3)-0.5)*4;
+    const r = 2.6 + seededRand(seed+i*7.1)*2.2;
+    const tone = MUSTARD_SEED_TONES[i % MUSTARD_SEED_TONES.length];
+    const gid = `trail${uid}_${i}`;
+    defs += seedGradientDef(gid, tone);
+    seeds += `<ellipse cx="${cx.toFixed(1)}" cy="${(cy+r*0.8).toFixed(1)}" rx="${(r*0.8).toFixed(1)}" ry="${(r*0.3).toFixed(1)}" fill="#2E1A0F" opacity=".14"/>`;
+    seeds += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="url(#${gid})"/>`;
+  }
+  return `<svg viewBox="0 0 ${w} 28" fill="none"><defs>${defs}</defs>${seeds}</svg>`;
+}
+/** Cesto/tigela de madeira estilizado com grãos dentro — diretamente inspirado nos
+    panfletos oficiais. Elemento mais complexo: usar com moderação (1-2 secções-chave). */
+function decorWoodBowlSVG(seed){
+  let defs = '', seeds = '';
+  const uid = seedClusterSeq++;
+  for(let i=0;i<7;i++){
+    const cx = 30 + (seededRand(seed+i*3.1)-0.5)*56;
+    const cy = 44 + (seededRand(seed+i*5.3)-0.5)*14;
+    const r = 3 + seededRand(seed+i*7.7)*2.4;
+    const tone = MUSTARD_SEED_TONES[i % MUSTARD_SEED_TONES.length];
+    const gid = `bowl${uid}_${i}`;
+    defs += seedGradientDef(gid, tone);
+    seeds += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="url(#${gid})"/>`;
+  }
+  const bowlGid = `woodbowl${uid}`;
+  defs += `<linearGradient id="${bowlGid}" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#8a5a30"/><stop offset="55%" stop-color="#6B4123"/><stop offset="100%" stop-color="#402615"/>
+  </linearGradient>`;
+  return `<svg viewBox="0 0 60 70" fill="none">
+    <defs>${defs}</defs>
+    <ellipse cx="30" cy="53" rx="28" ry="13" fill="url(#${bowlGid})"/>
+    <path d="M3 51C3 61 15 68 30 68C45 68 57 61 57 51L54 44L6 44Z" fill="url(#${bowlGid})"/>
+    <ellipse cx="30" cy="48" rx="23" ry="9" fill="#2E1A0F" opacity=".28"/>
+    ${seeds}
+  </svg>`;
+}
 /** kind: qualquer um dos antigos nomes continua a funcionar (compatibilidade dos ~59 pontos de
-    chamada) — 'seeds'/'bouquet' desenham o grupo de grãos (bouquet = mais denso), todos os
-    outros desenham o ramo com folhas reais. cls: classes de posição (ex.: 'dec-tr dec-lg'). */
+    chamada) — cada nome mapeia agora para uma de 7 formas-base diferentes (grãos, ramo médio,
+    ramo cheio, raminho discreto, folhas largas, flores de mostardeira, trilha de grãos), em
+    vez de só duas — para o olhar não ver sempre a mesma folha/grão repetidos. A tigela de
+    madeira (decorWoodBowlSVG) não está mapeada aqui de propósito — é usada diretamente, com
+    moderação, em 1-2 secções-chave. cls: classes de posição (ex.: 'dec-tr dec-lg'). */
 function decor(kind, cls, seed){
   const svg = kind==='seeds' ? decorSeedClusterSVG(seed, 4)
             : kind==='bouquet' ? decorSeedClusterSVG(seed, 7)
-            : decorBotanicalSVG(seed);
+            : kind==='twig' ? decorTwigMiniSVG(seed)
+            : kind==='sprig' ? decorBotanicalSVG(seed)
+            : kind==='fern' ? decorBranchFullSVG(seed)
+            : kind==='leaf' ? decorLeafPairSVG(seed)
+            : kind==='daisy' ? decorMustardFlowerSVG(seed)
+            : kind==='blossom' ? decorMustardFlowerSVG(seed)
+            : kind==='line' ? decorSeedTrailSVG(seed, 5)
+            : decorBranchFullSVG(seed);
   return `<div class="decor ${cls}" aria-hidden="true">${svg}</div>`;
 }
 /** Composição horizontal (grãos + uma folha) para o separador de secção — proporção larga
@@ -1643,7 +1805,7 @@ function decorDividerSVG(seed){
     const r = 3 + seededRand(seed+i*7.2)*2.6;
     const tone = MUSTARD_SEED_TONES[i % MUSTARD_SEED_TONES.length];
     const gid = `divg${uid}_${i}`;
-    defs += `<radialGradient id="${gid}" cx="35%" cy="30%" r="75%"><stop offset="0%" stop-color="#FCEFC4"/><stop offset="48%" stop-color="${tone}"/><stop offset="100%" stop-color="#7A4C1E"/></radialGradient>`;
+    defs += seedGradientDef(gid, tone);
     seeds += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="url(#${gid})"/>`;
   }
   return `<svg viewBox="0 0 190 50" fill="none">
@@ -1922,11 +2084,16 @@ function pageInspiracao(){
     ${decor('seeds','dec-bl dec-sm tone-orange secondary faint',76)}
     <div class="wrap">
       <div class="section-head reveal">
-        <span class="eyebrow">Galeria</span>
+        <span class="eyebrow">Mood board</span>
         <h2>Momentos de inspiração</h2>
+        <p>Não é um catálogo — é o "porquê" antes do "o quê". Cada imagem representa um sentimento ou versículo que depois se transforma numa peça real na loja.</p>
       </div>
       <div class="insp-gallery">
         ${INSPIRATION_GALLERY.map((g,i)=>inspGalleryCard(g,i)).join('')}
+      </div>
+      <div class="insp-gallery-bridge reveal">
+        <p>Quer saber de onde vem tudo isto?</p>
+        <a href="#/sobre" data-route="/sobre" class="btn btn-outline">Ler a nossa história</a>
       </div>
     </div>
   </section>

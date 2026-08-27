@@ -389,9 +389,9 @@ main{padding-top:82px;}
 .reveal-4{transition-delay:.32s;}
 
 /* ---------- Hero ---------- */
-.hero{position:relative;min-height:94vh;display:flex;align-items:center;overflow:hidden;
+.hero{position:relative;min-height:min(92vh,840px);display:flex;align-items:center;overflow:hidden;
   background:radial-gradient(circle at 18% 20%, #7a4c28 0%, var(--brown-dark) 46%, var(--brown-deep) 100%);
-  padding:150px 0 64px;
+  padding:128px 0 52px;
 }
 .hero::before{content:'';position:absolute;inset:0;opacity:.16;
   background-image:radial-gradient(circle, var(--mustard) 1.6px, transparent 1.6px);
@@ -406,27 +406,30 @@ main{padding-top:82px;}
    competir com selos ou etiquetas. Os selos de confiança ficam junto aos indicadores,
    nunca sobrepostos ao logo. */
 .hero-content{
-  position:relative;z-index:2;color:var(--cream);padding:150px 32px 96px;max-width:760px;margin:0 auto;width:100%;
+  /* Só padding horizontal aqui — o vertical vive exclusivamente em .hero (ver abaixo).
+     Bug corrigido: os dois elementos estavam a somar padding vertical (quase 300px só
+     no topo), obrigando a reduzir o zoom para ver o hero inteiro. */
+  position:relative;z-index:2;color:var(--cream);padding:0 32px;max-width:760px;margin:0 auto;width:100%;
   display:flex;flex-direction:column;align-items:center;text-align:center;
 }
-.hero-logo{width:min(360px,64vw);height:auto;margin-bottom:34px;filter:drop-shadow(0 26px 54px rgba(0,0,0,.45));}
+.hero-logo{width:min(290px,54vw);height:auto;margin-bottom:22px;filter:drop-shadow(0 26px 54px rgba(0,0,0,.45));}
 .hero-content .eyebrow{color:var(--gold-light);justify-content:center;}
 .hero-content .eyebrow::before{display:none;}
-.hero-content h1{font-size:clamp(36px,5.8vw,68px);color:#fff;line-height:1.05;margin-top:18px;letter-spacing:-.01em;}
-.hero-content h1 .script-line{display:block;color:var(--mustard);font-size:.56em;margin-top:12px;}
-.hero-verse-line{margin-top:26px;max-width:520px;color:rgba(251,242,228,.82);font-family:var(--serif);font-style:italic;font-size:16px;line-height:1.6;}
+.hero-content h1{font-size:clamp(34px,5.4vw,60px);color:#fff;line-height:1.06;margin-top:14px;letter-spacing:-.01em;}
+.hero-content h1 .script-line{display:block;color:var(--mustard);font-size:.56em;margin-top:10px;}
+.hero-verse-line{margin-top:20px;max-width:520px;color:rgba(251,242,228,.82);font-family:var(--serif);font-style:italic;font-size:15.5px;line-height:1.55;}
 .hero-verse-line span{display:block;margin-top:6px;font-style:normal;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold-light);}
-.hero-actions{display:flex;gap:14px;margin-top:38px;flex-wrap:wrap;justify-content:center;}
+.hero-actions{display:flex;gap:14px;margin-top:28px;flex-wrap:wrap;justify-content:center;}
 /* Selos de confiança — composição própria com o anel do motivo "selo" (.mini-seal),
    não uma linha de texto pequena. A etiqueta "100% personalizável" junta-se aqui,
    nunca sobreposta ao logo. */
-.hero-trust-row{display:flex;gap:28px;margin-top:54px;flex-wrap:wrap;justify-content:center;align-items:center;}
+.hero-trust-row{display:flex;gap:28px;margin-top:36px;flex-wrap:wrap;justify-content:center;align-items:center;}
 .hero-trust-item{display:flex;align-items:center;gap:11px;}
 .mini-seal{width:44px;height:44px;border-radius:50%;border:1.5px solid rgba(246,214,128,.5);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .mini-seal svg{width:18px;height:18px;color:var(--gold-light);}
 .hero-trust-item span{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:rgba(251,242,228,.78);max-width:86px;line-height:1.35;text-align:left;}
 .hero-trust-row .tag{transform:rotate(-4deg);}
-@media(max-width:600px){.hero{min-height:auto;padding:126px 0 48px;} .hero-content{padding:130px 24px 56px;} .hero-logo{margin-bottom:26px;}}
+@media(max-width:600px){.hero{min-height:auto;padding:120px 0 40px;} .hero-content{padding:0 24px;} .hero-logo{margin-bottom:18px;}}
 
 /* ---------- Benefícios (antiga "trust strip") ----------
    Já não é uma linha fina de 4 textos iguais: respiro generoso, ícones do próprio
@@ -644,6 +647,15 @@ main{padding-top:82px;}
 .pillar p{color:rgba(251,242,228,.68);margin-top:10px;font-size:14px;}
 @media(max-width:760px){.pillars{grid-template-columns:minmax(0,1fr);gap:44px;}}
 
+/* ---------- "Como funciona" — 3 passos ---------- */
+.steps-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-5);position:relative;}
+.steps-row::before{content:'';position:absolute;top:26px;left:14%;right:14%;height:1px;background:var(--line);z-index:0;}
+.step-item{position:relative;z-index:1;text-align:center;display:flex;flex-direction:column;align-items:center;}
+.step-num{width:52px;height:52px;flex-shrink:0;border-radius:50%;background:var(--brown);color:var(--cream);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:20px;font-weight:600;box-shadow:var(--shadow-sm);}
+.step-item h4{margin-top:16px;font-size:16.5px;}
+.step-item p{margin-top:6px;font-size:13.5px;max-width:230px;}
+@media(max-width:760px){.steps-row{grid-template-columns:minmax(0,1fr);gap:var(--space-6);} .steps-row::before{display:none;}}
+
 /* ---------- Storytelling (teaser na home, liga a /sobre) ----------
    Não um bloco de texto genérico: citação de destaque em Caveat, versículo em
    evidência tipográfica, narrativa curta. Registo floral/suave — conforto e confiança. */
@@ -738,6 +750,8 @@ main{padding-top:82px;}
 .insp-gallery a.insp-card:nth-child(3n+1) .insp-cap{font-size:19px;}
 @media(max-width:1080px){.insp-gallery{grid-template-columns:repeat(3,minmax(0,1fr));}}
 @media(max-width:760px){.insp-gallery{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:130px;}.insp-gallery a.insp-card:nth-child(3n+1){grid-row:span 1;}}
+.insp-gallery-bridge{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:40px;flex-wrap:wrap;text-align:center;}
+.insp-gallery-bridge p{font-family:var(--serif);font-style:italic;font-size:16px;color:var(--brown-dark);}
 
 /* ---------- Testimonials ---------- */
 .testimonial-note{font-size:12.5px;color:var(--ink-soft);font-style:italic;margin-top:-24px;margin-bottom:40px;}
