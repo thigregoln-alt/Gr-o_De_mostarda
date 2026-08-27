@@ -2103,15 +2103,6 @@ function pageInspiracao(){
       </div>
     </div>
   </section>
-
-  <section class="cta-band">
-    ${decor('twig','dec-tl dec-sm tone-cream secondary',77)}
-    <div class="wrap" style="justify-content:center;text-align:center;flex-direction:column">
-      <h2>Transforme uma destas reflexões numa peça sua</h2>
-      <p style="margin:14px auto 26px">Escolha um versículo e nós ajudamo-lo a torná-lo parte de um produto personalizado.</p>
-      <a href="#/loja" data-route="/loja" class="btn btn-primary">Ver produtos personalizados</a>
-    </div>
-  </section>
   `;
 }
 

@@ -846,14 +846,9 @@ main{padding-top:82px;}
 }
 
 /* ---------- Footer ----------
-   Faixa do versículo + selo no topo (assinatura da marca, não só no header), coluna
-   da marca com peso visual maior e uma frase de propósito — não só logótipo + ícones. */
+   Coluna da marca com peso visual maior e uma frase de propósito — não só logótipo +
+   ícones. */
 footer{background:var(--brown-deep);color:rgba(251,242,228,.75);padding:0 0 0;position:relative;overflow:hidden;}
-.footer-verse-strip{background:var(--brown);border-bottom:1px solid rgba(251,242,228,.12);padding:22px 0;}
-.footer-verse-in{display:flex;align-items:center;justify-content:center;gap:18px;text-align:center;flex-wrap:wrap;}
-.footer-verse-in .seal-badge{width:46px;height:46px;color:var(--gold-light);flex-shrink:0;}
-.footer-verse-in p{font-family:var(--serif);font-style:italic;font-size:14.5px;color:rgba(251,242,228,.88);max-width:560px;}
-.footer-verse-in p span{display:block;margin-top:4px;font-style:normal;font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold-light);}
 footer > .wrap{padding-top:72px;}
 .footer-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.3fr);gap:40px;padding-bottom:56px;border-bottom:1px solid rgba(251,242,228,.14);}
 .footer-brand{display:flex;flex-direction:column;align-items:center;text-align:center;}
@@ -1336,37 +1331,6 @@ footer > .wrap{padding-top:72px;}
 <main id="main"></main>
 
 <footer>
-  <div class="footer-verse-strip">
-    <div class="wrap footer-verse-in">
-      <span class="seal-badge" aria-hidden="true">
-        <svg viewBox="0 0 120 120" class="seal-badge-svg">
-          <defs><path id="footerSealPath" d="M60,60 m-44,0 a44,44 0 1,1 88,0 a44,44 0 1,1 -88,0"/></defs>
-          <circle cx="60" cy="60" r="57" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".9"/>
-          <circle cx="60" cy="60" r="49" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="1.5 4" opacity=".6"/>
-          <text font-family="'Space Mono',monospace" font-size="9" letter-spacing="2.6" fill="currentColor">
-            <textPath href="#footerSealPath" startOffset="1%">GRÃO DE MOSTARDA • GRÃO DE MOSTARDA • </textPath>
-          </text>
-          <path d="M12 13c0-7 5-9 5-9s0 5-1.5 7C17 13 17 20 12 20s-5-7-3.5-9C7 9 7 4 7 4s5 2 5 9Z"
-            fill="none" stroke="currentColor" stroke-width="1.6" transform="translate(41,41) scale(1.6)"/>
-        </svg>
-      </span>
-      <p>"Se tiverdes fé do tamanho de um grão de mostarda, direis a esta amoreira: desarraiga-te e planta-te no mar; e ela vos obedecerá."<span>Lucas 17:6 · Mateus 17:20</span></p>
-    </div>
-  </div>
-  <div class="decor dec-tr dec-lg tone-cream" aria-hidden="true">
-    <svg viewBox="0 0 60 90" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" style="transform:rotate(12deg)">
-      <path d="M30 85C14 62 12 34 30 8C48 34 46 62 30 85Z" fill="currentColor" opacity=".22"/>
-      <path d="M30 85C14 62 12 34 30 8C48 34 46 62 30 85Z" opacity=".75"/>
-      <path d="M30 82V14" opacity=".6"/>
-    </svg>
-  </div>
-  <div class="decor dec-bl dec-md tone-cream faint" aria-hidden="true">
-    <svg viewBox="0 0 80 40" fill="currentColor">
-      <ellipse cx="16" cy="22" rx="6" ry="7.6" opacity=".8" transform="rotate(-8 16 22)"/>
-      <ellipse cx="42" cy="14" rx="5.2" ry="6.6" opacity=".75" transform="rotate(10 42 14)"/>
-      <ellipse cx="66" cy="26" rx="5.6" ry="7" opacity=".8" transform="rotate(-14 66 26)"/>
-    </svg>
-  </div>
   <div class="wrap">
     <div class="footer-grid">
       <div class="footer-brand">
