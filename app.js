@@ -438,6 +438,9 @@ const REFLECTIONS = [
   { id:8, title:'O Filho Pródigo', verse:'Lucas 15:20', icon:'i-heart',
     short:'Um regresso a casa recebido de braços abertos, sem uma palavra de reproche.',
     long:'"Quando ainda estava longe, viu-o seu pai, e foi movido de íntima compaixão, e correu, e lançou-se-lhe ao pescoço, e o beijou." Uma das imagens mais fortes de amor incondicional em toda a Bíblia — e uma inspiração recorrente nas nossas peças para "casa" e família.' },
+  { id:9, title:'A Viúva e as Duas Moedas', verse:'Marcos 12:41-44', icon:'i-coin',
+    short:'Duas moedas pequenas, oferecidas por inteiro — e reconhecidas como a maior oferta de todas.',
+    long:'Enquanto outros depositavam grandes somas no tesouro do templo, uma viúva pobre deixa cair apenas duas pequenas moedas — tudo o que tinha para viver. Jesus chama os discípulos e diz que ela deu mais do que todos, porque deu do seu sustento, não do seu excesso. Uma história sobre o valor real de uma oferta: não o tamanho, mas o coração inteiro por trás dela — o mesmo espírito com que pensamos em cada peça pequena que sai das nossas mãos.' },
 ];
 
 /* =========================================================
@@ -714,18 +717,25 @@ function reflectionCard(s, i){
 /** Cartão da galeria "Momentos de inspiração": composição com motivo real (grãos/folhagem)
     em vez de um ícone de linha genérico — cor de fundo e combinação de motivos variam
     por índice para que nenhum cartão pareça copiado do vizinho. */
+/** Motivo primário de cada cartão — roda por 4 formas-base diferentes (índice do cartão),
+    para nenhum cartão parecer "vazio" nem repetir sempre o mesmo grão/folha. */
+function inspGalleryPrimaryMotif(g, roll){
+  if(roll===0) return decorSeedClusterSVG(g.seed, 5);
+  if(roll===1) return decorBranchFullSVG(g.seed);
+  if(roll===2) return decorLeafPairSVG(g.seed);
+  return decorSeedTrailSVG(g.seed, 4);
+}
 function inspGalleryCard(g, i){
-  const useSeeds = i%2===0;
-  const useLeaf = i%3!==0;
-  const motifTop = 8 + Math.round(seededRand(g.seed)*14);
-  const motifRight = 8 + Math.round(seededRand(g.seed+1)*14);
-  const motifSize = 46 + Math.round(seededRand(g.seed+2)*30);
+  const motifSize = 78 + Math.round(seededRand(g.seed+2)*40);
+  const motifTop = 10 + Math.round(seededRand(g.seed)*16);
+  const motifRight = 10 + Math.round(seededRand(g.seed+1)*16);
+  const useSecondary = i%2===0;
   return `
   <a href="#/loja" data-route="/loja" class="insp-card reveal reveal-${(i%4)+1}" title="${escapeHtml(g.label)}">
     <div class="insp-motif" style="top:${motifTop}px;right:${motifRight}px;width:${motifSize}px;height:${motifSize}px">
-      ${useSeeds ? decorSeedClusterSVG(g.seed, 4) : ''}
+      ${inspGalleryPrimaryMotif(g, i%4)}
     </div>
-    ${useLeaf ? `<div class="insp-motif" style="bottom:38px;left:10px;width:${Math.round(motifSize*0.9)}px;height:${Math.round(motifSize*1.3)}px">${decorBotanicalSVG(g.seed+3)}</div>` : ''}
+    ${useSecondary ? `<div class="insp-motif" style="bottom:40px;left:12px;width:${Math.round(motifSize*0.55)}px;height:${Math.round(motifSize*0.85)}px">${decorTwigMiniSVG(g.seed+3)}</div>` : ''}
     <span class="insp-cap">${escapeHtml(g.label)}</span>
   </a>`;
 }
@@ -2021,29 +2031,25 @@ function pageInspiracao(){
   const origin = REFLECTIONS.find(s=>s.featured);
   const stories = REFLECTIONS.filter(s=>!s.featured);
   return `
+  <!-- Fundidas numa única secção de abertura: .insp-hero e .origin-band eram duas
+       introduções escuras e centradas empilhadas, com mensagem redundante. Agora é uma
+       só — introdução geral, depois a origem do nome como o "porquê" dentro da mesma
+       secção, separada por um traço fino em vez de repetir todo o tratamento visual. -->
   <section class="insp-hero">
     ${decor('twig','dec-side-l dec-lg tone-cream',61)}
-    ${decor('daisy','dec-tr dec-sm tone-rose secondary',62)}
-    ${decor('seeds','dec-bl dec-sm tone-cream secondary faint',66)}
+    ${decor('seeds','dec-tr dec-sm tone-gold secondary',62)}
+    ${decor('sprig','dec-tr-out dec-lg tone-cream bold',68)}
     ${decor('line','dec-bot-r dec-md tone-gold secondary',67)}
     <div class="wrap reveal">
       <span class="eyebrow">Inspiração</span>
       <h1>Inspiração que ganha forma</h1>
       <p>Histórias da Bíblia, um versículo de cada vez — e como cada uma pode inspirar uma peça personalizada, feita para acompanhar a sua fé no dia a dia.</p>
-    </div>
-  </section>
-
-  <section class="origin-band">
-    ${decor('sprig','dec-tr-out dec-lg tone-cream bold',68)}
-    ${decor('seeds','dec-bl dec-sm tone-cream secondary faint',69)}
-    ${decor('line','dec-top-l dec-md tone-gold secondary',70)}
-    <div class="wrap origin-in reveal">
-      <div class="origin-icon"><svg><use href="#i-seed"/></svg></div>
-      <span class="eyebrow">A nossa origem</span>
-      <h2>A história por trás do nosso nome</h2>
-      <p class="origin-verse">"Se tiverdes fé do tamanho de um grão de mostarda, direis a esta amoreira: desarraiga-te e planta-te no mar; e ela vos obedecerá."<span>Lucas 17:6 · Mateus 17:20</span></p>
-      <p class="origin-text">${origin.long.split('" ').slice(1).join('" ')}</p>
-      <img class="origin-logo" src="assets/logo.webp" alt="Grão de Mostarda Personalizados">
+      <div class="insp-origin-quote">
+        <div class="origin-icon"><svg><use href="#i-seed"/></svg></div>
+        <span class="eyebrow">A nossa origem</span>
+        <p class="origin-verse">"Se tiverdes fé do tamanho de um grão de mostarda, direis a esta amoreira: desarraiga-te e planta-te no mar; e ela vos obedecerá."<span>Lucas 17:6 · Mateus 17:20</span></p>
+        <p class="origin-text">${origin.long.split('" ').slice(1).join('" ')}</p>
+      </div>
     </div>
   </section>
 
@@ -2080,7 +2086,7 @@ function pageInspiracao(){
   </section>
 
   <section class="section">
-    ${decor('blossom','dec-tr dec-md tone-rose',65)}
+    ${decor('leaf','dec-tr dec-md tone-rose',65)}
     ${decor('seeds','dec-bl dec-sm tone-orange secondary faint',76)}
     <div class="wrap">
       <div class="section-head reveal">
@@ -2099,7 +2105,7 @@ function pageInspiracao(){
   </section>
 
   <section class="cta-band">
-    ${decor('daisy','dec-tl dec-sm tone-cream secondary',77)}
+    ${decor('twig','dec-tl dec-sm tone-cream secondary',77)}
     <div class="wrap" style="justify-content:center;text-align:center;flex-direction:column">
       <h2>Transforme uma destas reflexões numa peça sua</h2>
       <p style="margin:14px auto 26px">Escolha um versículo e nós ajudamo-lo a torná-lo parte de um produto personalizado.</p>

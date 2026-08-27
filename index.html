@@ -690,7 +690,12 @@ main{padding-top:82px;}
 @media(max-width:460px){.bible-grid{grid-template-columns:minmax(0,1fr);}}
 
 /* ---------- Inspiração: hero ---------- */
-.insp-hero{position:relative;padding:158px 0 74px;text-align:center;overflow:hidden;
+/* ---------- Inspiração: abertura (introdução + origem do nome, uma só secção) ----------
+   Correção: eram duas secções escuras e centradas empilhadas (.insp-hero + .origin-band),
+   com mensagem redundante. Fundidas numa só — a origem do nome fica como um segundo
+   momento dentro da mesma secção, separado por um traço fino, não repetindo o
+   tratamento visual inteiro (fundo, título grande, centragem) uma segunda vez. */
+.insp-hero{position:relative;padding:150px 0 64px;text-align:center;overflow:hidden;
   background:radial-gradient(ellipse at 50% -10%, #4a3018 0%, var(--brown-dark) 55%, var(--ink) 100%);color:var(--cream);}
 .insp-hero::before{content:'';position:absolute;inset:0;opacity:.07;pointer-events:none;
   background-image:radial-gradient(circle, var(--mustard) 1.5px, transparent 1.5px);background-size:34px 34px;}
@@ -699,23 +704,12 @@ main{padding-top:82px;}
 .insp-hero .eyebrow::before{display:none;}
 .insp-hero h1{font-size:clamp(30px,4.6vw,48px);color:#fff;margin-top:14px;}
 .insp-hero p{margin-top:16px;color:rgba(251,242,228,.82);font-size:15.5px;line-height:1.65;}
-
-/* ---------- Inspiração: destaque especial (origem do nome) ---------- */
-.origin-band{position:relative;padding:88px 0;overflow:hidden;
-  background:linear-gradient(160deg, var(--brown-deep) 0%, var(--brown) 55%, var(--orange-dark) 130%);color:var(--cream);}
-.origin-band::before,.origin-band::after{content:'';position:absolute;border-radius:50%;pointer-events:none;}
-.origin-band::before{width:280px;height:280px;background:var(--mustard);opacity:.10;top:-90px;left:-70px;}
-.origin-band::after{width:220px;height:220px;background:var(--gold-light);opacity:.08;bottom:-80px;right:-40px;}
-.origin-in{position:relative;z-index:2;max-width:640px;margin:0 auto;text-align:center;display:flex;flex-direction:column;align-items:center;}
-.origin-icon{width:56px;height:56px;border-radius:50%;background:rgba(246,214,128,.14);display:flex;align-items:center;justify-content:center;margin-bottom:18px;}
+.insp-origin-quote{margin-top:40px;padding-top:34px;border-top:1px solid rgba(251,242,228,.16);display:flex;flex-direction:column;align-items:center;}
+.origin-icon{width:56px;height:56px;border-radius:50%;background:rgba(246,214,128,.14);display:flex;align-items:center;justify-content:center;margin-bottom:16px;}
 .origin-icon svg{width:26px;height:26px;color:var(--mustard);}
-.origin-band .eyebrow{color:var(--gold-light);}
-.origin-band .eyebrow::before{background:var(--gold-light);}
-.origin-band h2{font-size:clamp(24px,3.6vw,36px);color:#fff;margin-top:10px;}
-.origin-verse{margin-top:22px;font-family:var(--serif);font-style:italic;font-size:18px;line-height:1.6;color:#fff;}
+.origin-verse{margin-top:18px;font-family:var(--serif);font-style:italic;font-size:17px;line-height:1.6;color:#fff;}
 .origin-verse span{display:block;margin-top:8px;font-style:normal;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold-light);}
-.origin-text{margin-top:20px;font-size:14.5px;line-height:1.75;color:rgba(251,242,228,.85);}
-.origin-logo{width:104px;height:auto;margin-top:30px;filter:drop-shadow(0 12px 26px rgba(0,0,0,.35));}
+.origin-text{margin-top:18px;font-size:14px;line-height:1.75;color:rgba(251,242,228,.85);max-width:600px;}
 
 /* ---------- Inspiração → Produto ---------- */
 .insp-link-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px;}
@@ -730,12 +724,13 @@ main{padding-top:82px;}
 @media(max-width:460px){.insp-link-grid{grid-template-columns:minmax(0,1fr);}}
 
 /* ---------- Inspiração: galeria ----------
-   Correção: eram placeholders com um ícone de linha genérico sobre castanho liso —
-   passa a cartões compostos (gradiente variado + motivo de grãos/folhagem real +
-   legenda com contraste garantido), tamanhos variados (não todos quadrados). */
-.insp-gallery{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:150px;gap:14px;}
+   Correção: o mosaico com alturas irregulares (nth-child a fazer 1 em cada 3 cartões
+   ocupar 2 linhas) deixava os cartões grandes com pouco/nenhum elemento visual dentro,
+   e ia enquadrar mal fotografia real no futuro. Agora todos os cartões partilham o
+   mesmo aspect-ratio — qualquer posição no grid enquadra bem qualquer imagem. */
+.insp-gallery{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;}
 .insp-card{
-  position:relative;border-radius:14px;overflow:hidden;display:flex;align-items:flex-end;
+  position:relative;aspect-ratio:4/5;border-radius:14px;overflow:hidden;display:flex;align-items:flex-end;
   box-shadow:var(--shadow-sm);transition:transform .35s ease, box-shadow .35s ease;
   background:linear-gradient(150deg, var(--brown) 0%, var(--brown-dark) 100%);
 }
@@ -746,10 +741,9 @@ main{padding-top:82px;}
 .insp-card .insp-motif svg{width:100%;height:100%;display:block;}
 .insp-card::after{content:'';position:absolute;inset:0;background:linear-gradient(0deg, rgba(20,12,6,.75) 0%, rgba(20,12,6,.08) 46%, transparent 68%);}
 .insp-card .insp-cap{position:relative;z-index:2;padding:16px;color:#fff;font-family:var(--serif);font-size:15.5px;line-height:1.25;}
-.insp-gallery a.insp-card:nth-child(3n+1){grid-row:span 2;}
-.insp-gallery a.insp-card:nth-child(3n+1) .insp-cap{font-size:19px;}
 @media(max-width:1080px){.insp-gallery{grid-template-columns:repeat(3,minmax(0,1fr));}}
-@media(max-width:760px){.insp-gallery{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:130px;}.insp-gallery a.insp-card:nth-child(3n+1){grid-row:span 1;}}
+@media(max-width:760px){.insp-gallery{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:400px){.insp-gallery{grid-template-columns:minmax(0,1fr);}}
 .insp-gallery-bridge{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:40px;flex-wrap:wrap;text-align:center;}
 .insp-gallery-bridge p{font-family:var(--serif);font-style:italic;font-size:16px;color:var(--brown-dark);}
 
@@ -1261,6 +1255,7 @@ footer > .wrap{padding-top:72px;}
 <symbol id="i-lion" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.6M12 18.9v2.6M21.5 12h-2.6M5.1 12H2.5M18.6 5.4l-1.9 1.9M7.3 16.7l-1.9 1.9M18.6 18.6l-1.9-1.9M7.3 7.3 5.4 5.4"/></symbol>
 <symbol id="i-fish" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12c3-4 8-6 12-6 3.5 0 6 2.5 6 6s-2.5 6-6 6c-4 0-9-2-12-6Z"/><path d="M15 10.5v3M3 12l3-3M3 12l3 3"/></symbol>
 <symbol id="i-staff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 21V8"/><path d="M9 8c-3-.5-4-3-2-5.5 2 1 4 2.5 3.5 5"/><path d="M6 21h6"/></symbol>
+<symbol id="i-coin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="15" r="6"/><circle cx="15" cy="9" r="6"/><path d="M9 15c1-1 1.5-2.2 1.5-3.5" opacity=".6"/></symbol>
 </svg>
 
 <!-- HEADER -->
